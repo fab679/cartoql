@@ -9,6 +9,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "graphql": "^16.9.0"
+    "graphql": "^16.9.0",
+    "jose": "^6"
   }
 }

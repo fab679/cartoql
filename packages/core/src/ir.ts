@@ -74,6 +74,12 @@ export interface FieldExpansion extends AlgebraNodeBase {
   readonly itemType:
     | { readonly kind: 'class'; readonly iri: Iri }
     | { readonly kind: 'datatype'; readonly iri: Iri }
+  /**
+   * Type-level stamps of the *referenced* class (docs/07 rule: entity visibility
+   * follows the entity, not just the root): nested entities failing these are
+   * filtered from lists / nulled — existence-blind, edge track's failure shape.
+   */
+  readonly itemTypeConstraints: readonly string[]
   readonly children: readonly AlgebraNode[]
 }
 

@@ -29,6 +29,7 @@ import {
   StaticResolver,
   type PermissionResolver,
 } from '../../core/src/security.js'
+import { jwtGroupsResolver } from '../../core/src/providers.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
@@ -48,6 +49,10 @@ export interface ServeOptions {
    * Absent → OpenResolver: the documented no-security posture; health says so.
    */
   authFile?: string
+  /** jwt-groups provider: HS256 shared secret (production: jwksUrl via the SPI). */
+  jwtSecret?: string
+  jwtPrincipalClaim?: string
+  jwtGroupsClaim?: string
   /** ACL graph scope for store-side enforcement of stamped modules (M2 slice 2). */
   aclGraph?: string
   /**
@@ -88,9 +93,16 @@ export function startGateway(options: ServeOptions): RunningGateway {
 
   // Auth posture (docs/04 Path 2): static fixture for tests/demos; oidc/jwt
   // providers slot behind the same PermissionResolver SPI.
-  const resolver: PermissionResolver = options.authFile
-    ? new StaticResolver(JSON.parse(readFileSync(options.authFile, 'utf-8')) as Record<string, string[]>)
-    : new OpenResolver()
+  const resolver: PermissionResolver =
+    options.jwtSecret !== undefined
+      ? jwtGroupsResolver({
+          secret: options.jwtSecret,
+          ...(options.jwtPrincipalClaim ? { principalClaim: options.jwtPrincipalClaim } : {}),
+          ...(options.jwtGroupsClaim ? { groupsClaim: options.jwtGroupsClaim } : {}),
+        })
+      : options.authFile
+        ? new StaticResolver(JSON.parse(readFileSync(options.authFile, 'utf-8')) as Record<string, string[]>)
+        : new OpenResolver()
   const module: VeraxModule = {
     moduleId: generated.moduleId,
     schemaHash: generated.schemaHash,
@@ -165,7 +177,12 @@ export function startGateway(options: ServeOptions): RunningGateway {
         const principalId = typeof req.headers['x-verax-principal'] === 'string'
           ? (req.headers['x-verax-principal'] as string)
           : 'anonymous'
-        const view = await resolveView(resolver, { principalId })
+        // bearer credentials ride PrincipalContext for jwt/oidc resolvers (docs/04)
+        const authz = typeof req.headers['authorization'] === 'string'
+          ? (req.headers['authorization'] as string)
+          : undefined
+        const bearer = authz?.startsWith('Bearer ') ? authz.slice('Bearer '.length) : undefined
+        const view = await resolveView(resolver, { principalId, credentials: { bearer } })
         const response = await run(plan, variables, { view, principalId })
         return send(200, response)
       }

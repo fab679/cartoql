@@ -125,11 +125,18 @@ describe('security corpus: @traversalScope — the existence-blind edge track (d
     expect(orgs.errors.map((e) => e.extensions.code)).toEqual(['VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED'])
   })
 
-  it('an allowed traversal expands normally — even without the related type\'s entity gate (v0: entity gating is root-level, documented)', async () => {
+  it('entity visibility follows the entity into expansions: an allowed traversal still filters nested type-gated entities', async () => {
+    // carol holds the traversal group (hr-comp) but NOT the SensitiveNote entity
+    // gate (legal): the edge opens, and every nested note is filtered blind
     const carol = await run('org-notes.graphql', createContext('carol', ['hr-comp']))
     const edges = (carol.data['organizations'] as { edges: Array<{ node: { name: string; noteOfInverse: Array<{ name: string }> } }> }).edges
-    expect(edges.flatMap((e) => e.node.noteOfInverse.map((n) => n.name)).sort()).toEqual(['Alpha audit remark', 'Beta compliance check'])
-    expect(carol.errors).toEqual([])
+    expect(edges.map((e) => e.node.noteOfInverse)).toEqual([[], [], []])
+    expect(carol.errors).toEqual([]) // existence-blind: no denial entries, no channel
+
+    // alice holds BOTH: edge opens and entities materialize
+    const alice = await run('org-notes.graphql', ALICE())
+    const aliceEdges = (alice.data['organizations'] as { edges: Array<{ node: { noteOfInverse: Array<{ name: string }> } }> }).edges
+    expect(aliceEdges.flatMap((e) => e.node.noteOfInverse.map((n) => n.name)).sort()).toEqual(['Alpha audit remark', 'Beta compliance check'])
   })
 })
 

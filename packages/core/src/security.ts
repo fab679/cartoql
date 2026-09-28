@@ -22,9 +22,19 @@
  * (`VX_SCOPE_UNRESOLVED` / FAIL_CLOSED_VIEW), never to permissiveness.
  */
 
-/** The request identity as it arrives at the gateway (IdP tokens, embedder SPIs). */
+/** Per-request credential payload, threaded by the transport (never client-set). */
+export interface PrincipalCredentials {
+  readonly bearer?: string
+}
+
+/**
+ * The request identity as it arrives at the gateway (IdP tokens, embedder SPIs):
+ * the header identity plus whatever bearer credential the transport carries —
+ * Path-2 providers (jwt-groups, oidc-introspect) read the latter.
+ */
 export interface PrincipalContext {
   readonly principalId: string
+  readonly credentials?: PrincipalCredentials
 }
 
 /**

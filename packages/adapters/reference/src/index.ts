@@ -221,9 +221,19 @@ export class ReferenceAdapter implements StoreAdapter {
     if (field.children.length === 0) {
       throw new ExecutorError(`contract violation: class field ${field.field} has no children in the plan`)
     }
-    const matches = field.inverse
-      ? [...this.#store.getSubjects(field.path, subject, null)].map((t) => t.value).sort()
-      : [...this.#store.getObjects(subject, field.path, null)].map((t) => t.value).sort()
+    // docs/07: entity visibility follows the entity into expansions — nested
+    // items failing their type's stamps leave the population first: invisible
+    // ≡ absent for nested entities, identical to root-level gating (blind).
+    const itemVisible = (iri: string): boolean => {
+      const gateOk = securityConstraints(field.itemTypeConstraints).every((c2) =>
+        evaluateConstraint(c2, security.view).visible,
+      )
+      return gateOk && this.#isOfType(iri, field.itemType.kind === 'class' ? field.itemType.iri : '')
+    }
+    const matches = (field.inverse
+      ? [...this.#store.getSubjects(field.path, subject, null)].map((t) => t.value)
+      : [...this.#store.getObjects(subject, field.path, null)].map((t) => t.value)
+    ).filter(itemVisible).sort()
     if (field.cardinality === 'single') {
       const first = matches[0]
       return first === undefined

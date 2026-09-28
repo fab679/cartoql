@@ -277,6 +277,8 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
       inverse: mapped.inverse,
       cardinality: mapped.cardinality,
       itemType,
+      itemTypeConstraints:
+        mapped.itemTypeName !== undefined ? typeLevelConstraints(module, mapped.itemTypeName) : [],
       graphs: module.datasetGraphs,
       constraints: fieldLevelConstraints(module, typeName, fieldName),
       children:
