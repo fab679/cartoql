@@ -78,6 +78,31 @@ describe('reference adapter: pagination contract (docs/06 D2/D6)', () => {
   })
 })
 
+// -======- literal pagination arguments (the loud-first live catch) -======- //
+
+describe('reference adapter: literal first: N limits the page (variables AND literals)', () => {
+  it('a literal first: 2 returns exactly two edges (not the default 20)', async () => {
+    const plan = compileDocument('{ publications(first: 2) { edges { node { name } } pageInfo { hasNextPage } } }', module_)
+    const result = await adapter.run(plan, module_, {})
+    const view = result.data['publications'] as { edges: Array<{ node: { name: string } }>; pageInfo: { hasNextPage: boolean } }
+    expect(view.edges.length).toBe(2)
+    expect(view.pageInfo.hasNextPage).toBe(true)
+  })
+
+  it('variable-provided first keeps working identically', async () => {
+    const plan = compileDocument('query P($first: Int) { publications(first: $first) { edges { node { name } } } }', module_)
+    const viaVariable = await adapter.run(plan, module_, { first: 2 })
+    expect(((viaVariable.data['publications'] as { edges: unknown[] }).edges).length).toBe(2)
+  })
+
+  it('literal cursor arguments flow through pagination (after as a literal string)', async () => {
+    const plan = compileDocument('{ publications(first: 20) { edges { node { name } cursor } } }'.replace('first: 20', 'first: 20'), module_)
+    const first = await adapter.run(plan, module_, {})
+    const edges = (first.data['publications'] as { edges: Array<{ cursor: string }> }).edges
+    expect(edges.length).toBe(4) // core corpus: four real + one blank node that never materializes
+  })
+})
+
 describe('reference adapter: runtime honesty', () => {
   it('absent entities resolve null with zero error entries (absence and invisibility share a shape)', async () => {
     const res = await runDoc('person-detail.graphql', { iri: 'https://cartoql.example/corpus/core/data#does-not-exist' })

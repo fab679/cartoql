@@ -142,10 +142,17 @@ export class ReferenceAdapter implements StoreAdapter {
       .map((iri) => ({ iri, ord: ordValue(iri) }))
       .sort((a, b) => cmpEntries(a.ord, a.iri, b.ord, b.iri))
       .map((e) => e.iri)
-    // pagination variables are OPTIONAL (docs/06): absent → canonical/default
-    // behavior; strict binding (fail loud) stays for the lookup IRI and filters
-    const optionalTerm = (binding: { variable: string } | null): string | null => {
-      if (binding === null) return null
+    // pagination arguments are OPTIONAL (docs/06) and arrive in TWO shapes:
+    // a `{variable}` binding resolved from the request, or a literal value in
+    // the document itself (first: 2). Literals previously fell through as
+    // null and reverted pages to the default size — the parity corpus only
+    // exercised the variable shape, so this asymmetric bug survived until a
+    // literal-first query ran against the reference adapter (caught live).
+    const optionalTerm = (binding: { variable: string } | number | string | null): string | null => {
+      if (binding === null || binding === undefined || typeof binding === 'number') {
+        return typeof binding === 'number' ? String(binding) : null
+      }
+      if (typeof binding === 'string') return binding
       const value = variables[binding.variable]
       return value === undefined || value === null ? null : String(value)
     }
