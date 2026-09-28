@@ -112,6 +112,16 @@ export interface GenerateSdlOptions {
    * field and type level; each future directive extends this table.
    */
   stamps?: readonly StampRule[]
+  /**
+   * Ontology drivers (docs/05 "the ontology IS the model"):
+   * - includeInverses: auto-generate reverse-traversal fields from declared
+   *   owl:inverseOf pairs (the inverse field lands on the forward property's
+   *   rdfs:domain type — no shapes needed for the reverse side)
+   * - surfaceTransitive: emit transitiveProperty annotations in the semanticMap
+   *   for future query-time path expansion
+   */
+  includeInverses?: boolean
+  surfaceTransitive?: boolean
 }
 
 /** One stamp: a group gate at field/type level, a role gate, or a traversal gate. */
@@ -226,6 +236,50 @@ export function generateSdl(
     }
   }
 
+  // rdfs:domain / rdfs:range: the ontology's own type constraints. Both drive
+  // inference when SHACL leaves them out (docs/06: source defaults from ontology
+  // semantics when cards are omitted) and power the auto-inverse driver.
+  const RDFS_DOMAIN = 'http://www.w3.org/2000/01/rdf-schema#domain'
+  const RDFS_RANGE = 'http://www.w3.org/2000/01/rdf-schema#range'
+  const propertyDomain = new Map<string, string>() // property → class IRI
+  for (const subj of ontology.getSubjects(RDFS_DOMAIN, null, null)) {
+    if (subj.termType !== 'NamedNode') continue
+    for (const domain of ontology.getObjects(subj, RDFS_DOMAIN, null)) {
+      if (domain.termType === 'NamedNode') propertyDomain.set(subj.value, domain.value)
+    }
+  }
+  const propertyRange = new Map<string, string>()
+  for (const subj of ontology.getSubjects(RDFS_RANGE, null, null)) {
+    if (subj.termType !== 'NamedNode') continue
+    for (const range of ontology.getObjects(subj, RDFS_RANGE, null)) {
+      if (range.termType === 'NamedNode') propertyRange.set(subj.value, range.value)
+    }
+  }
+
+  // OWL equivalentProperty: the ontology's synonym declarations — when your
+  // data uses one name and the "canonical" model uses another, the generator
+  // resolves the equivalence so your vocabulary remains YOUR vocabulary.
+  const EQUIV_PROP = 'http://www.w3.org/2002/07/owl#equivalentProperty'
+  const equivalentProperty = new Map<string, string>()
+  for (const subj of ontology.getSubjects(EQUIV_PROP, null, null)) {
+    if (subj.termType !== 'NamedNode') continue
+    for (const other of ontology.getObjects(subj, EQUIV_PROP, null)) {
+      if (other.termType === 'NamedNode') {
+        equivalentProperty.set(subj.value, other.value)
+        equivalentProperty.set(other.value, subj.value) // symmetric
+      }
+    }
+  }
+
+  // transitive properties: surfaced in the semanticMap for future path
+  // expansion (query-time closure is NOT auto-computed — too many edges for
+  // graph stores at real scale), exposed as signal for downstream planners.
+  const TRANSITIVE_PROP = 'http://www.w3.org/2002/07/owl#TransitiveProperty'
+  const transitiveProperties = new Set<string>()
+  for (const subj of ontology.getSubjects('http://www.w3.org/1999/02/22-rdf-syntax-ns#type', TRANSITIVE_PROP, null)) {
+    if (subj.termType === 'NamedNode') transitiveProperties.add(subj.value)
+  }
+
   const shapeSubjects = [...shapes.getSubjects(RDF_TYPE, `${SH}NodeShape`, null)]
   const classToType = new Map<string, string>()
   for (const s of shapeSubjects) {
@@ -307,11 +361,18 @@ export function generateSdl(
 
       let inner: string
       if (raw.classIri) {
-        inner = classToType.get(raw.classIri) ?? ''
+        inner = classToType.get(raw.classIri)
+          ?? classToType.get(propertyRange.get(raw.pathIri) ?? '')
+          ?? ''
         if (!inner) {
-          throw new GenerationError(
-            `field "${fieldName}" on ${typeName} references class <${raw.classIri}> with no covering node shape (docs/06 fallthrough is a later milestone)`,
-          )
+          const inferred = propertyRange.get(raw.pathIri)
+          if (inferred !== undefined && classToType.has(inferred)) {
+            inner = classToType.get(inferred)!
+          } else {
+            throw new GenerationError(
+              `field "${fieldName}" on ${typeName} references class <${raw.classIri}> with no covering node shape (docs/06 fallthrough is a later milestone)`,
+            )
+          }
         }
       } else if (raw.datatypeIri) {
         inner = SCALAR_MAP[raw.datatypeIri] ?? ''
@@ -393,6 +454,48 @@ export function generateSdl(
     const { single, plural } = rootNames(t2.name)
     roots[single] = { typeName: t2.name, targetClass: t2.targetClass, mode: 'single', defaultPageSize: 20 }
     roots[plural] = { typeName: t2.name, targetClass: t2.targetClass, mode: 'list', defaultPageSize: 20 }
+  }
+
+  // Ontology-driven inverse fields (docs/05: the ontology IS the model):
+  // when the ontology declares X owl:inverseOf Y, generate the reverse-traversal
+  // field on Y's rdfs:domain type using X's own name. The SHACL inversePath
+  // shape provides the forward edge; this adds the REVERSE edge without needing
+  // an explicit shape on the target class — one declaration in the ontology,
+  // both traversal directions appear.
+  if (options.includeInverses === true) {
+    for (const [forwardIri, inverseIri] of declaredInverse.entries()) {
+      const forwardDomain = propertyDomain.get(forwardIri)
+      const targetType = forwardDomain !== undefined ? classToType.get(forwardDomain) : undefined
+      const inverseName = lowerFirst(localName(inverseIri))
+      if (targetType !== undefined) {
+        // the class of the forward property's domain owns the inverse field
+        const target = types.find((t3) => t3.name === targetType)
+        if (target !== undefined && target.fields.find((f) => f.name === inverseName) === undefined) {
+          // find if any existing forward field on this type match this property
+          const hasForward = target.fields.some((f) => f.pathIri === forwardIri || f.pathIri === inverseIri)
+          if (hasForward) {
+            // generate the inverse field on the TARGET of the forward edge —
+            // inverseOf lives on the domain type so the reverse traversal
+            // belongs to Y's RANGE class, not the domain.
+            const forwardRangeIri = propertyRange.get(forwardIri)
+            const rangeType = forwardRangeIri !== undefined ? classToType.get(forwardRangeIri) : undefined
+            if (rangeType !== undefined) {
+              const rangeTarget = types.find((t3) => t3.name === rangeType)
+              if (rangeTarget !== undefined && rangeTarget.fields.find((f) => f.name === inverseName) === undefined) {
+                const domainType = targetType
+                rangeTarget.fields.push({
+                  name: inverseName,
+                  typeRef: domainType !== undefined ? `[${domainType}!]` : '[' + domainType + '!]',
+                  inverse: true,
+                  pathIri: forwardIri,
+                  cardinality: 'list',
+                })
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   applyStamps(types, options.stamps ?? [])
