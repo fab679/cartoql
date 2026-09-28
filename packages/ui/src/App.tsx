@@ -259,8 +259,11 @@ export function App() {
 
       {notice !== null ? <div className="border-b border-line-2 bg-spec-red/10 px-3 py-1 text-[12px] text-spec-red">{notice}</div> : null}
 
-      <main className="flex min-h-0 flex-1">
-        <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 flex-1 overflow-x-auto">
+        <section
+          className="relative flex min-h-0 shrink-0 grow-0 flex-col"
+          style={{ width: 'min(42rem, 55vw)' }}
+        >
           <div className="flex items-center justify-between border-b border-line/60 px-2 py-1 text-[11px]">
             <label className="flex items-center gap-1 text-paper-dim">
               principal
