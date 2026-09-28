@@ -92,9 +92,42 @@ describe('compiler: fail-loud surface (docs/03 enforcement-adjacent behavior)', 
     expect(() => compileDocument('mutation { deleteEverything }', module_)).toThrow(/no write surface/)
   })
 
-  it('rejects fragments in v0', () => {
-    const src = `query { person(iri: "https://example/p1") { ...f } } fragment f on Person { name }`
-    expect(() => compileDocument(src, module_)).toThrow(/fragments/)
+  it('resolves document fragments: a fragment document compiles to the SAME planId as its inline equivalent', () => {
+    const inline = 'query { person(iri: "https://example/p1") { name worksFor { name } } }'
+    const viaFragment =
+      'query { person(iri: "https://example/p1") { ...core } } fragment core on Person { name worksFor { name } }'
+    expect(compileDocument(viaFragment, module_).planId).toBe(compileDocument(inline, module_).planId)
+  })
+
+  it('rejects cross-type fragment spreads loudly (unions are D4, pending)', () => {
+    const src = 'query { person(iri: "https://example/p1") { ...orgBit } } fragment orgBit on Organization { name }'
+    expect(() => compileDocument(src, module_)).toThrow(/cross-type spreads/)
+  })
+
+  it('@skip/@include: literal booleans honored, variables rejected loudly, never ignored', () => {
+    const skipped = 'query { person(iri: "https://example/p1") { name @skip(if: true) } }'
+    expect(() => compileDocument(skipped, module_)).toThrow(/empty after fragment/)
+    const kept = 'query { person(iri: "https://example/p1") { name @skip(if: false) worksFor @include(if: true) { name } } }'
+    const plan = compileDocument(kept, module_)
+    expect(plan.roots[0]!.children.length).toBe(2)
+    const variableDriven = 'query Q($yes: Boolean) { person(iri: "https://example/p1") { name @skip(if: $yes) } }'
+    expect(() => compileDocument(variableDriven, module_)).toThrow(/silently ignoring is not an option/)
+  })
+
+  it('aliases compile: response keys differ from field names, IR stays path-true', () => {
+    const src = 'query { person(iri: "https://example/p1") { label: name employer: worksFor { orgName: name } } }'
+    const plan = compileDocument(src, module_)
+    const root = plan.roots[0]!
+    if (root.kind !== 'EntityLookup') throw new Error('bad root')
+    const top = root.children as Array<{ field: string; responseKey: string }>
+    expect(top.find((c) => c.field === 'Person.name')?.responseKey).toBe('label')
+    expect(top.find((c) => c.field === 'Person.worksFor')?.responseKey).toBe('employer')
+  })
+
+  it('multi-root documents compile', () => {
+    const src = 'query { person(iri: "https://example/p1") { name } organizations(first: 2) { edges { node { name } } } }'
+    const plan = compileDocument(src, module_)
+    expect(plan.roots.length).toBe(2)
   })
 
   it('rejects unknown fields as contract drift, not a runtime guess', () => {

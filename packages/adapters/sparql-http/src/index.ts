@@ -504,7 +504,7 @@ function buildEntity(
 ): Record<string, unknown> {
   const entity: Record<string, unknown> = {}
   for (const f of fields) {
-    const name = f.node.field.split('.')[1]!
+    const name = f.node.responseKey
     // Track by prefix, mirroring the reference adapter exactly (parity compares
     // data AND errors): `group:` → visible denial (null + typed error);
     // `traversal:` → existence-blind edge (no bindings, no error — the store-side

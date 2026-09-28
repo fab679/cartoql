@@ -173,7 +173,7 @@ export class ReferenceAdapter implements StoreAdapter {
   ): Record<string, unknown> {
     const entity: Record<string, unknown> = {}
     for (const child of children) {
-      entity[child.field.split('.')[1]!] = this.#expandField(subject, child, security, errors)
+      entity[child.responseKey] = this.#expandField(subject, child, security, errors)
     }
     return entity
   }

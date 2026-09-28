@@ -67,6 +67,8 @@ export interface FieldExpansion extends AlgebraNodeBase {
   readonly kind: 'FieldExpansion'
   /** `TypeName.fieldName` — traceable to the module's semantic map. */
   readonly field: string
+  /** The response key: the field name, or the client's alias for it. */
+  readonly responseKey: string
   readonly path: Iri
   readonly inverse: boolean
   /** Shape-declared cardinality — feeds the cost model's listFactor. */

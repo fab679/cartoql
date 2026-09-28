@@ -1,0 +1,23 @@
+# client-reality document: fragments, inline typed condition (typed away on a
+# single-typed entity), aliases, and literal @include/@skip — resolves to the
+# same compiled semantics as its inline spelling (planId equality).
+query PersonFragmented($iri: ID!) {
+  person(iri: $iri) {
+    ...personCore
+    ... on Organization {
+      orgName: name
+    }
+  }
+}
+fragment personCore on Person {
+  label: name
+  employer: worksFor @include(if: true) {
+    ...orgName
+  }
+  papers: authored @skip(if: false) {
+    title: name
+  }
+}
+fragment orgName on Organization {
+  orgName: name
+}

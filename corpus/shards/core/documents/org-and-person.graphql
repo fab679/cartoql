@@ -1,0 +1,12 @@
+query OrgAndPerson($iri: ID!) {
+  organizations(first: 2) {
+    edges {
+      node {
+        name
+      }
+    }
+  }
+  person(iri: $iri) {
+    name
+  }
+}
