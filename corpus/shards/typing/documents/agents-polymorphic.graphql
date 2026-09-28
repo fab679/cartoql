@@ -1,0 +1,18 @@
+# interface-typed scan: population = agents; per-node discrimination +
+# conditioned children resolve per implementer — the D4 end-to-end case
+query AgentsPolymorphic {
+  agents(first: 20) {
+    edges {
+      node {
+        __typename
+        name
+        ...on Person {
+          email
+        }
+        ...on Organization {
+          crewSize
+        }
+      }
+    }
+  }
+}

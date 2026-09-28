@@ -172,3 +172,44 @@ describe.skipIf(!endpoint)('L0 security parity: constraint pushdown vs reference
     expect(result.errors).toEqual([])
   })
 })
+
+
+// -======- D4 parity: polymorphic resolution through BOTH enforcement paths -======- //
+
+const typingShard = fileURLToPath(new URL('../../../../corpus/shards/typing/', import.meta.url))
+const typingOntology = readFileSync(join(typingShard, 'ontology.ttl'), 'utf-8')
+const typingShapes = readFileSync(join(typingShard, 'shapes.ttl'), 'utf-8')
+const typingData = readFileSync(join(typingShard, 'data.ttl'), 'utf-8')
+
+const typingGenerated = generateSdl(
+  { ontology: typingOntology, shapes: typingShapes },
+  'corpus/shards/typing',
+  { datasetGraphs: ['urn:verax:shard:typing'] },
+)
+const typingModule = {
+  moduleId: typingGenerated.moduleId,
+  schemaHash: typingGenerated.schemaHash,
+  schema: buildSchema(typingGenerated.sdl),
+  semanticMap: typingGenerated.semanticMap,
+  datasetGraphs: typingGenerated.datasetGraphs,
+}
+const typingReference = ReferenceAdapter.fromTurtle(typingData, typingModule.datasetGraphs)
+
+describe.skipIf(!endpoint)('L0 D4 parity: polymorphic entities through both paths (live Oxigraph)', () => {
+  let typingAdapter: SparqlHttpAdapter
+  beforeAll(async () => {
+    typingAdapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+  })
+
+  const typingDocs = readdirScan(join(typingShard, 'documents'))
+
+  it.each(typingDocs)('%s: interface resolution identical in-store vs in-kernel', async (doc) => {
+    const source = readFileSync(join(typingShard, 'documents', doc), 'utf-8')
+    const variables = JSON.parse(readFileSync(join(typingShard, 'documents', doc.replace(/\.graphql$/, '.vars.json')), 'utf-8'))
+    const plan = compileDocument(source, typingModule)
+    const throughStore = await typingAdapter.run(plan, typingModule, variables)
+    const throughKernel = await typingReference.run(plan, typingModule, variables)
+    expect(throughStore.errors).toEqual(throughKernel.errors)
+    expect(throughStore.data).toEqual(throughKernel.data) // __typename + conditioned fields included
+  })
+})

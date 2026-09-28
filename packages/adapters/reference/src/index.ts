@@ -202,9 +202,34 @@ export class ReferenceAdapter implements StoreAdapter {
   ): Record<string, unknown> {
     const entity: Record<string, unknown> = {}
     for (const child of children) {
+      // D4: typed-fragment children apply only when the materialized entity has
+      // the condition class — non-matching conditions skip existence-blind
+      if (child.typeCondition !== undefined && !this.#isOfType(subject, child.typeCondition)) {
+        continue
+      }
+      if (child.returnsTypename !== undefined) {
+        entity[child.responseKey] = this.#resolveTypename(subject, child)
+        continue
+      }
       entity[child.responseKey] = this.#expandField(subject, child, security, errors)
     }
     return entity
+  }
+
+  /**
+   * Concrete implementer name for __typename (D4). Hierarchy entities carry BOTH
+   * the parent and their concrete type — most specific wins (docs/06): any
+   * matched name differing from the containing type beats the parent fallback.
+   */
+  #resolveTypename(subject: string, child: FieldExpansion): string {
+    const returns = child.returnsTypename!
+    const parentName = child.field.split('.')[0]
+    const matches: string[] = []
+    for (const iri of this.#store.getObjects(subject, RDF_TYPE, null).map((t) => t.value)) {
+      if (returns[iri] !== undefined) matches.push(returns[iri]!)
+    }
+    const concrete = matches.find((n) => n !== parentName)
+    return concrete ?? matches[0] ?? (parentName ?? 'Unknown')
   }
 
   #expandField(

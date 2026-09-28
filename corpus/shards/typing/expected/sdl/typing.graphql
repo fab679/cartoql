@@ -1,0 +1,96 @@
+# @verax/generated — module: corpus/shards/typing
+# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
+
+scalar VeraxBigint
+
+interface Agent {
+  name: String!
+}
+
+type AgentConnection {
+  edges: [AgentEdge!]!
+  pageInfo: PageInfo!
+}
+type AgentEdge {
+  node: Agent!
+  cursor: String!
+}
+
+type Organization implements Agent {
+  crewSize: VeraxBigint
+  name: String!
+}
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+}
+type OrganizationEdge {
+  node: Organization!
+  cursor: String!
+}
+
+type Person implements Agent {
+  email: String
+  name: String!
+}
+type PersonConnection {
+  edges: [PersonEdge!]!
+  pageInfo: PageInfo!
+}
+type PersonEdge {
+  node: Person!
+  cursor: String!
+}
+
+type Project {
+  contact: Agent!
+  title: String!
+}
+type ProjectConnection {
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+}
+type ProjectEdge {
+  node: Project!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+enum AgentOrderBy {
+  NAME_ASC
+  NAME_DESC
+}
+
+enum OrganizationOrderBy {
+  CREW_SIZE_ASC
+  CREW_SIZE_DESC
+  NAME_ASC
+  NAME_DESC
+}
+
+enum PersonOrderBy {
+  EMAIL_ASC
+  EMAIL_DESC
+  NAME_ASC
+  NAME_DESC
+}
+
+enum ProjectOrderBy {
+  TITLE_ASC
+  TITLE_DESC
+}
+
+type Query {
+  agent(iri: ID!): Agent
+  agents(name: String, first: Int = 20, after: String, orderBy: AgentOrderBy): AgentConnection
+  organization(iri: ID!): Organization
+  organizations(crewSize: String, name: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
+  people(email: String, name: String, first: Int = 20, after: String, orderBy: PersonOrderBy): PersonConnection
+  person(iri: ID!): Person
+  project(iri: ID!): Project
+  projects(title: String, first: Int = 20, after: String, orderBy: ProjectOrderBy): ProjectConnection
+}

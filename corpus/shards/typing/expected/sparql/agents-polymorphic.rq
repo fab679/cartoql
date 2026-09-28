@@ -1,0 +1,18 @@
+SELECT DISTINCT ?v0_e ?v0_e_tn0 ?v0_e_tn1 ?v0_e_tn2 ?v0_e_1_v ?v0_e_2_v ?v0_e_3_v
+WHERE {
+  { SELECT ?v0_e
+  WHERE {
+    GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Agent> }
+  }
+  ORDER BY ?v0_e
+  LIMIT 21 }
+  GRAPH <urn:verax:shard:typing> {
+  OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Agent> } BIND(<urn:verax:type:Agent> AS ?v0_e_tn0) }
+  OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Organization> } BIND(<urn:verax:type:Organization> AS ?v0_e_tn1) }
+  OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Person> } BIND(<urn:verax:type:Person> AS ?v0_e_tn2) }
+  OPTIONAL { ?v0_e <https://verax.example/corpus/typing#email> ?v0_e_1_v }
+  OPTIONAL { ?v0_e <https://verax.example/corpus/typing#crewSize> ?v0_e_2_v }
+  OPTIONAL { ?v0_e <https://verax.example/corpus/typing#name> ?v0_e_3_v }
+  }
+}
+ORDER BY ?v0_e

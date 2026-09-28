@@ -18,7 +18,8 @@
     "corpus:check": "vitest run corpus",
     "corpus:snapshot:core": "tsx scripts/emit-core-sdl.ts && tsx scripts/emit-core-plans.ts && tsx scripts/emit-core-responses.ts && tsx scripts/emit-core-sparql.ts",
     "serve": "tsx packages/gateway/src/cli.ts",
-    "corpus:snapshot:sec": "tsx scripts/emit-sec.ts"
+    "corpus:snapshot:sec": "tsx scripts/emit-sec.ts",
+    "corpus:snapshot:typing": "tsx scripts/emit-typing.ts"
   },
   "devDependencies": {
     "@types/n3": "^1.26.4",

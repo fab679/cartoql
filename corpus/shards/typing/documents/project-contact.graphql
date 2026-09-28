@@ -1,9 +1,10 @@
-# the polymorphic field: interface field (name) + typed fragments per implementer.
-# Unconditional children apply to every agent; conditioned children only to matches.
+# THE polymorphic field: interface field (name), __typename discrimination,
+# and typed fragments per implementer — conditioned, not typed-away
 query ProjectContact($iri: ID!) {
   project(iri: $iri) {
     title
     contact {
+      __typename
       name
       ...personFields
       ...orgFields

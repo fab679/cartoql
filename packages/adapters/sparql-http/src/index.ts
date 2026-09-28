@@ -131,10 +131,9 @@ export function projectRoot(
     return securityConstraints(constraints).map((c) => aclGate(c, security.aclGraph))
   }
 
-  emitFields(expansions, selected, projected.fields, e, gatesFor)
-
   const rootGates = gatesFor(root.constraints)
   const scope = root.graphs[0] ?? 'urn:verax:dataset:default'
+  emitFields(expansions, selected, projected.fields, e, gatesFor, scope)
   const typePattern = `  ?${e} a <${root.targetClass}> .`
   const where: string[] = []
 
@@ -280,8 +279,20 @@ function emitFields(
   fields: readonly ProjectedField[],
   parentVar: string,
   gatesFor: (constraints: readonly string[]) => readonly string[],
+  scope = 'urn:verax:dataset:default',
 ): void {
   fields.forEach((f) => {
+    // __typename (D4): per-implementer OPTIONAL + BIND marker; assembly maps them
+    if (f.node.returnsTypename !== undefined) {
+      let markerIndex = 0
+      for (const [implIri, typeName] of Object.entries(f.node.returnsTypename)) {
+        const marker = `${parentVar}_tn${markerIndex}`
+        selected.push(marker)
+        patterns.push(`  OPTIONAL { GRAPH <${scope}> { ?${parentVar} a <${implIri}> } BIND(<urn:verax:type:${typeName}> AS ?${marker}) }`)
+        markerIndex += 1
+      }
+      return
+    }
     const arrow = f.node.inverse ? `^<${f.node.path}>` : `<${f.node.path}>`
     selected.push(f.leafVar)
     // field gates wrap the field's OPTIONAL contents: an unmet gate yields no
@@ -291,7 +302,12 @@ function emitFields(
       selected.push(f.childVar)
       patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.childVar} .`)
       for (const g of gates) patterns.push(`    ${g}`)
-      emitFields(patterns, selected, f.children, f.childVar, gatesFor)
+      // D4: typed-fragment children carry the concrete-class condition inside
+      // the OPTIONAL — the store resolves conditions (non-matches bind nothing)
+      if (f.node.typeCondition !== undefined) {
+        patterns.push(`    FILTER(EXISTS { GRAPH <${scope}> { ?${f.childVar} a <${f.node.typeCondition}> } })`)
+      }
+      emitFields(patterns, selected, f.children, f.childVar, gatesFor, scope)
       patterns.push('  }')
     } else if (gates.length === 0) {
       patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.leafVar} }`)
@@ -577,6 +593,7 @@ function assembleScan(
         projected.fields,
         security,
         errors,
+        projected.entityVar,
       ),
       cursor: encodeCursor({ orderByKey, lastValue: ordinateOf(iri, rows.results.bindings.find((r) => r[projected.entityVar]?.value === iri) ?? {} as Row), lastIRI: iri, graphHash }),
     }))
@@ -603,9 +620,30 @@ function buildEntity(
   fields: readonly ProjectedField[],
   security: SecurityContext | undefined,
   errors: VeraxError[],
+  entityVar?: string,
 ): Record<string, unknown> {
   const entity: Record<string, unknown> = {}
+  const firstRow = rows[0] ?? {}
   for (const f of fields) {
+    // D4 __typename: per-implementer markers bound in rows; most specific wins
+    // (any marker whose type name differs from the containing type)
+    if (f.node.returnsTypename !== undefined && entityVar !== undefined) {
+      const parentName = f.node.field.split('.')[0]
+      const markerNames = Object.keys(firstRow).filter((k) => new RegExp(`^${entityVar}_tn\\d+$`).test(k))
+      const matched = markerNames
+        .map((m) => firstRow[m]!.value.replace('urn:verax:type:', ''))
+        .filter((n2) => f.node.returnsTypename![Object.keys(f.node.returnsTypename!).find((k) => f.node.returnsTypename![k] === n2) ?? ''] !== undefined || true)
+      const concrete = matched.find((n2) => n2 !== parentName)
+      entity[f.node.responseKey] = concrete ?? matched[0] ?? parentName
+      continue
+    }
+    // D4 conditioned children: when this entity's rows carry NO binding for the
+    // condition's fields, the key is OMITTED (reference skips non-matching
+    // conditions — existence-blind parity, key-presence included)
+    if (f.node.typeCondition !== undefined) {
+      const hasAnyBinding = rows.some((r) => r[f.leafVar] !== undefined || r[f.childVar ?? ''] !== undefined)
+      if (!hasAnyBinding) continue
+    }
     const name = f.node.responseKey
     // Track by prefix, mirroring the reference adapter exactly (parity compares
     // data AND errors): `group:` → visible denial (null + typed error);
@@ -640,7 +678,7 @@ function buildEntity(
       const childVar = f.childVar
       const childIris = [...new Set(rows.map((r) => r[childVar]?.value).filter((v): v is string => v !== undefined))].sort()
       const subEntities = childIris.map((iri) =>
-        buildEntity(rows.filter((r) => r[childVar]?.value === iri), f.children, security, errors),
+        buildEntity(rows.filter((r) => r[childVar]?.value === iri), f.children, security, errors, childVar),
       )
       entity[name] = f.node.cardinality === 'single' ? subEntities[0] ?? null : subEntities
     }

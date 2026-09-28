@@ -66,6 +66,11 @@ export interface SemanticRootEntry {
 export interface SemanticMap {
   readonly fields: Readonly<Record<string, SemanticFieldEntry>>
   readonly roots: Readonly<Record<string, SemanticRootEntry>>
+  /** D4: interface implementers (interface type name → child type names). */
+  readonly hierarchy?: Readonly<{
+    readonly implementers: Readonly<Record<string, readonly string[]>>
+    readonly parentOf: Readonly<Record<string, string>>
+  }>
 }
 
 export interface VeraxModule {
@@ -158,6 +163,53 @@ export function compileDocument(source: string, module: VeraxModule): Plan {
 }
 
 /** Recursive visitor over the request AST collecting registry directives (all node kinds). */
+function targetClassOf(module: VeraxModule, typeName: string): string {
+  for (const root of Object.values(module.semanticMap.roots)) {
+    if (root.typeName === typeName) return root.targetClass
+  }
+  for (const f of Object.values(module.semanticMap.fields)) {
+    if (f.itemTypeName === typeName && f.itemClass !== undefined) return f.itemClass
+  }
+  throw new CompilerError(`cannot resolve the class IRI of type "${typeName}" — contract hole`)
+}
+
+function compileOneField(
+  selection: FieldNode,
+  typeName: string,
+  module: VeraxModule,
+  fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>,
+): {
+  field: string
+  responseKey: string
+  path: string
+  inverse: boolean
+  cardinality: 'single' | 'list'
+  itemType: { kind: 'class'; iri: string } | { kind: 'datatype'; iri: string }
+  children: AlgebraNode[]
+} {
+  const fieldName = selection.name.value
+  const key = `${typeName}.${fieldName}`
+  const mapped = module.semanticMap.fields[key]
+  if (!mapped) {
+    throw new CompilerError(`field ${key} has no path mapping in the module contract (schema/data drift — a build error, not a runtime guess)`)
+  }
+  const itemType = mapped.datatype
+    ? ({ kind: 'datatype', iri: mapped.datatype } as const)
+    : ({ kind: 'class', iri: mapped.itemClass ?? '' } as const)
+  return {
+    field: key,
+    responseKey: selection.alias?.value ?? fieldName,
+    path: mapped.pathIri,
+    inverse: mapped.inverse,
+    cardinality: mapped.cardinality,
+    itemType,
+    children:
+      mapped.itemTypeName && selection.selectionSet
+        ? compileEntityChildren(selection.selectionSet, mapped.itemTypeName, module, fragments)
+        : [],
+  }
+}
+
 /**
  * Flatten a selection set into plain Fields, resolving fragment spreads and
  * inline fragments (client-reality support: every generated client emits these).
@@ -197,6 +249,73 @@ function fieldIsActive(selection: FieldNode): boolean {
 }
 
 type FragmentTable = ReadonlyMap<string, { onType: string; set: SelectionSetNode }>
+
+interface ConditionedField {
+  readonly fields: readonly FieldNode[]
+  /** typed-fragment conditions at this level: implementer typeName → its fields */
+  readonly conditions: ReadonlyArray<{ onType: string; fields: readonly FieldNode[]; typenameWanted: boolean }>
+}
+
+/**
+ * D4 walker: unlike flattenSelections (root level, where typed fragments type
+ * away), entity-level selections may select TYPED fragments over implementers
+ * of an interface-typed field — those become *conditioned* children. Unconditional
+ * fields map the field's own type; conditions map their implementer type.
+ */
+function walkEntitySelections(
+  set: SelectionSetNode,
+  containingType: string,
+  acceptingTypes: readonly string[],
+  fragments: FragmentTable,
+  where: string,
+): ConditionedField {
+  const fields: FieldNode[] = []
+  const conditions: { onType: string; fields: readonly FieldNode[]; typenameWanted: boolean }[] = []
+  const walk = (inner: SelectionSetNode, onType: string): void => {
+    for (const selection of inner.selections) {
+      if (selection.kind === 'Field') {
+        if (selection.name.value === '__typename') {
+          conditions.unshift({ onType, fields: [], typenameWanted: true })
+          continue
+        }
+        if (fieldIsActive(selection)) fields.push(selection)
+        continue
+      }
+      if (selection.kind === 'InlineFragment') {
+        const condition = selection.typeCondition?.name.value
+        if (condition === undefined || condition === onType) {
+          walk(selection.selectionSet, onType)
+          continue
+        }
+        if (condition === containingType || acceptingTypes.includes(condition)) {
+          const bucket = flattenSelections(selection.selectionSet, condition, fragments, `${where} ... on ${condition}`)
+          conditions.push({ onType: condition, fields: bucket, typenameWanted: false })
+          continue
+        }
+        // typed away (legal GraphQL): a condition this field cannot resolve
+        // contributes nothing — never an error, never a guess (docs/06)
+        continue
+      }
+      const fragment = fragments.get(selection.name.value)
+      if (fragment === undefined) {
+        throw new CompilerError(`unknown fragment "${selection.name.value}" (at ${where})`)
+      }
+      if (fragment.onType === onType) {
+        walk(fragment.set, onType)
+        continue
+      }
+      if (fragment.onType === containingType || acceptingTypes.includes(fragment.onType)) {
+        const bucket = flattenSelections(fragment.set, fragment.onType, fragments, `${where} ${fragment.onType} spread`)
+        conditions.push({ onType: fragment.onType, fields: bucket, typenameWanted: false })
+        continue
+      }
+      // typed away (legal GraphQL): see the inline-fragment branch above
+      continue
+    }
+  }
+  walk(set, containingType)
+  return { fields, conditions }
+}
 
 function flattenSelections(
   set: SelectionSetNode,
@@ -367,8 +486,53 @@ interface ConnectionTaxonomy {
 }
 
 function compileEntityChildren(set: SelectionSetNode, typeName: string, module: VeraxModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode[] {
+  // D4: selections under an interface-typed (or plain) entity may select typed
+  // fragments over the hierarchy's implementers; those compile conditioned
+  const implementers = module.semanticMap.hierarchy?.implementers[typeName]
+  const acceptingTypes: readonly string[] = implementers ?? []
+  const walked = walkEntitySelections(set, typeName, acceptingTypes, fragments, `type ${typeName}`)
+
   const children: AlgebraNode[] = []
-  for (const selection of flattenSelections(set, typeName, fragments, `type ${typeName}`)) {
+  // __typename discrimination: implementer class IRI → GraphQL type name
+  for (const condition of walked.conditions) {
+    if (condition.typenameWanted) {
+      const impls = module.semanticMap.hierarchy?.implementers[typeName]
+      const typenameOf: Record<string, string> = {}
+      for (const root of Object.values(module.semanticMap.roots)) {
+        if (root.typeName === typeName || impls?.includes(root.typeName) || impls !== undefined) {
+          if (root.typeName === typeName || impls?.includes(root.typeName)) typenameOf[root.targetClass] = root.typeName
+        }
+      }
+      children.push({
+        kind: 'FieldExpansion',
+        field: `${typeName}.__typename`,
+        responseKey: '__typename',
+        path: 'urn:verax:computed:__typename',
+        inverse: false,
+        cardinality: 'single',
+        itemType: { kind: 'class', iri: '' },
+        itemTypeConstraints: [],
+        returnsTypename: Object.keys(typenameOf).length > 0 ? typenameOf : { [typeName]: typeName },
+        graphs: module.datasetGraphs,
+        constraints: [],
+        children: [],
+      })
+      continue
+    }
+    for (const selection of condition.fields) {
+      const compiled = compileOneField(selection, condition.onType, module, fragments)
+      children.push({
+        kind: 'FieldExpansion',
+        ...compiled,
+        typeCondition: targetClassOf(module, condition.onType),
+        itemTypeConstraints: typeLevelConstraints(module, condition.onType),
+        graphs: module.datasetGraphs,
+        constraints: [], // conditioned fields carry no stamps in v1 (they can: future)
+      } as unknown as AlgebraNode)
+    }
+  }
+
+  for (const selection of walked.fields) {
     const fieldName = selection.name.value
     if (fieldName.startsWith('__')) throw new CompilerError(`system field ${fieldName} is not plan-compilable in v0`)
 

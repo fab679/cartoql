@@ -105,6 +105,17 @@ export interface FieldExpansion extends AlgebraNodeBase {
    * filtered from lists / nulled — existence-blind, edge track's failure shape.
    */
   readonly itemTypeConstraints: readonly string[]
+  /**
+   * D4: this expansion applies only when the materialized entity has this
+   * concrete class (typed-fragment compilation). Absent = unconditional.
+   * Non-matching entities skip the field existence-blind (docs/06 D4).
+   */
+  readonly typeCondition?: string
+  /**
+   * D4: __typename discrimination — implementer class IRI → GraphQL type name.
+   * Present only on returnsTypename expansions.
+   */
+  readonly returnsTypename?: Readonly<Record<string, string>>
   readonly children: readonly AlgebraNode[]
 }
 

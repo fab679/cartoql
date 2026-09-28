@@ -30,6 +30,8 @@ jobs:
             -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/data.ttl
           curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Asec-acl' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/acl.ttl
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Atyping' \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/typing/data.ttl
       - run: npm run typecheck
       - run: npm run test
       - name: L0 parity suite (sparql-http vs reference, live Oxigraph)

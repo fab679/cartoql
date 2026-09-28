@@ -1,0 +1,1 @@
+{"response":{"data":{"project":{"contact":{"__typename":"Person","name":"Ada Ionescu","personEmail":"ada@example.org"},"title":"Project Alpha"}},"errors":[]},"variables":{"iri":"https://verax.example/corpus/typing/data#proj-alpha"}}

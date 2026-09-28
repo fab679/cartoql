@@ -99,14 +99,17 @@ describe('compiler: fail-loud surface (docs/03 enforcement-adjacent behavior)', 
     expect(compileDocument(viaFragment, module_).planId).toBe(compileDocument(inline, module_).planId)
   })
 
-  it('rejects cross-type fragment spreads loudly (unions are D4, pending)', () => {
-    const src = 'query { person(iri: "https://example/p1") { ...orgBit } } fragment orgBit on Organization { name }'
-    expect(() => compileDocument(src, module_)).toThrow(/cross-type spreads/)
+  it('cross-type fragment spreads TYPE AWAY on concrete fields (legal GraphQL; D4 conditions apply to implementers)', () => {
+    const src = 'query { person(iri: "https://example/p1") { name ...orgBit } } fragment orgBit on Organization { name }'
+    const plan = compileDocument(src, module_)
+    const root = plan.roots[0]!
+    if (root.kind !== 'EntityLookup') throw new Error('bad root')
+    expect(root.children.length).toBe(1) // orgBit contributed nothing
   })
 
   it('@skip/@include: literal booleans honored, variables rejected loudly, never ignored', () => {
     const skipped = 'query { person(iri: "https://example/p1") { name @skip(if: true) } }'
-    expect(() => compileDocument(skipped, module_)).toThrow(/empty after fragment/)
+    expect(() => compileDocument(skipped, module_)).toThrow(/empty selection set/)
     const kept = 'query { person(iri: "https://example/p1") { name @skip(if: false) worksFor @include(if: true) { name } } }'
     const plan = compileDocument(kept, module_)
     expect(plan.roots[0]!.children.length).toBe(2)
@@ -135,9 +138,15 @@ describe('compiler: fail-loud surface (docs/03 enforcement-adjacent behavior)', 
     expect(() => compileDocument(src, module_)).toThrow(/no path mapping/)
   })
 
-  it('rejects system fields in v0', () => {
+  it('__typename compiles to a computed discriminator (D4); other system fields still reject', () => {
     const src = 'query { person(iri: "https://example/p1") { name __typename } }'
-    expect(() => compileDocument(src, module_)).toThrow(/system field/)
+    const plan = compileDocument(src, module_)
+    const root = plan.roots[0]!
+    if (root.kind !== 'EntityLookup') throw new Error('bad root')
+    const tn = root.children.find((c) => c.kind === 'FieldExpansion' && c.responseKey === '__typename')
+    expect(tn).toBeDefined()
+    const bogus = 'query { person(iri: "https://example/p1") { name __schema } }'
+    expect(() => compileDocument(bogus, module_)).toThrow(/system field/)
   })
 
   it('rejects scalar fields with selection sets', () => {
