@@ -16,7 +16,7 @@
     "test": "vitest run",
     "build": "npm run -s typecheck && vitest run --silent",
     "corpus:check": "vitest run corpus",
-    "corpus:snapshot:core": "tsx scripts/emit-core-sdl.ts && tsx scripts/emit-core-plans.ts && tsx scripts/emit-core-responses.ts"
+    "corpus:snapshot:core": "tsx scripts/emit-core-sdl.ts && tsx scripts/emit-core-plans.ts && tsx scripts/emit-core-responses.ts && tsx scripts/emit-core-sparql.ts"
   },
   "devDependencies": {
     "@types/n3": "^1.26.4",

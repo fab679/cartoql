@@ -6,10 +6,12 @@ Per docs/09, the gold shard carries three snapshot families;
 - `plans/`  — compiled algebra IR (JSON) for the shard's reference documents
 - `responses/` — expected GraphQL responses per document
 
-The full trio has landed (M1):
+The full trio has landed (M1) — plus the SPARQL projection snapshots:
 - `sdl/core.graphql` + `sdl/core.map.json` — generator output + semantic map
 - `plans/*.json` — compiled ADR-1 IR per reference document
 - `responses/*.json` — executed responses (reference adapter), variables recorded
+- `sparql/*.rq` + `sparql/*.bind.json` — SPARQL projection + protocol bindings
+  (the same plans through the default adapter; query text carries no client values)
 
 Snapshots are *reviewed artifacts*: committed, diffed in PRs, regenerated only via
 `npm run corpus:snapshot:core` — never silently overwritten.
