@@ -148,17 +148,17 @@ describe('identity is data: iri in every listing (the which-IRI answer)', () => 
   it('connections expose entity IRIs — discovery bootstraps; gated entities show none', async () => {
     // alice (legal) sees SensitiveNote entities and their IRIs
     const alice = await run('notes-scan.graphql', ALICE())
-    const edges = alice.data['sensitiveNotes'] as { edges: Array<{ node: { name: string }> }> }
-    expect(edges.edges.length).toBe(1) // corpora: two in core typing; sec has 2 — snapshot governs exact
+    expect((alice.data['sensitiveNotes'] as { edges: unknown[] }).edges).toHaveLength(2)
     // listings can select iri on the entity type
     const source = 'query { sensitiveNotes(first: 10) { edges { node { iri name } } } }'
     const plan = compileDocument(source, module_)
-    const withIris = await adapter.run(plan, module_, {}, ALICE())
-    const secEdges = (withIris.data['sensitiveNotes'] as { edges: Array<{ node: { iri: string; name: string } }> }).edges
-    for (const edge of secEdges) expect(edge.node.iri).toMatch(/^https:\/\/cartoql\.example\//)
+    const aliceView = await adapter.run(plan, module_, {}, ALICE())
+    const iris = JSON.stringify(aliceView.data['sensitiveNotes']).match(/"iri":"https:\/\/cartoql\.example\/[^"]+"/g)
+    expect(iris).not.toBeNull()
+    expect(iris!.length).toBe(2)
     // bob (no groups): the gated population is EMPTY — iris and entities alike never appear
-    const bob = await adapter.run(plan, module_, {}, BOB())
-    expect((bob.data['sensitiveNotes'] as { edges: unknown[] }).edges).toEqual([])
+    const bobView = await adapter.run(plan, module_, {}, BOB())
+    expect((bobView.data['sensitiveNotes'] as { edges: unknown[] }).edges).toEqual([])
   })
 })
 

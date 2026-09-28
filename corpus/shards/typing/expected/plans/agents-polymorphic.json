@@ -1,1 +1,91 @@
-{"cost":7.25,"documentHash":"3792708122cc08225f624151d57eb4ef5749968296f98b7af7b667d523b716e6","moduleId":"corpus/shards/typing","planId":"187af3108f70ec544668caa844de4b4e051b29d4731a85acaa15fc16a0000f29","roots":[{"argumentCount":1,"children":[{"cardinality":"single","children":[],"constraints":[],"field":"Agent.__typename","graphs":["urn:cartoql:shard:typing"],"inverse":false,"itemType":{"iri":"","kind":"class"},"itemTypeConstraints":[],"kind":"FieldExpansion","path":"urn:cartoql:computed:__typename","responseKey":"__typename","returnsTypename":{"https://cartoql.example/corpus/typing#Agent":"Agent","https://cartoql.example/corpus/typing#Organization":"Organization","https://cartoql.example/corpus/typing#Person":"Person"}},{"cardinality":"single","children":[],"constraints":[],"field":"Person.email","graphs":["urn:cartoql:shard:typing"],"inverse":false,"itemType":{"iri":"http://www.w3.org/2001/XMLSchema#string","kind":"datatype"},"itemTypeConstraints":[],"kind":"FieldExpansion","path":"https://cartoql.example/corpus/typing#email","responseKey":"email","typeCondition":"https://cartoql.example/corpus/typing#Person"},{"cardinality":"single","children":[],"constraints":[],"field":"Organization.crewSize","graphs":["urn:cartoql:shard:typing"],"inverse":false,"itemType":{"iri":"http://www.w3.org/2001/XMLSchema#integer","kind":"datatype"},"itemTypeConstraints":[],"kind":"FieldExpansion","path":"https://cartoql.example/corpus/typing#crewSize","responseKey":"crewSize","typeCondition":"https://cartoql.example/corpus/typing#Organization"},{"cardinality":"single","children":[],"constraints":[],"field":"Agent.name","graphs":["urn:cartoql:shard:typing"],"inverse":false,"itemType":{"iri":"http://www.w3.org/2001/XMLSchema#string","kind":"datatype"},"itemTypeConstraints":[],"kind":"FieldExpansion","path":"https://cartoql.example/corpus/typing#name","responseKey":"name"}],"connectionShaping":{"edges":true,"pageInfo":false},"constraints":["explicit-graph"],"graphs":["urn:cartoql:shard:typing"],"kind":"EntityLookup","mode":"scan","pagination":{"defaultFirst":20,"first":20},"rootField":"agents","targetClass":"https://cartoql.example/corpus/typing#Agent","typeName":"Agent"}],"schemaHash":"79cfa1a50b3b7d95cbe1fd9a137009c163766f8ea93dbea7fbda1c6f11c8b816"}
+{
+  "cost": 7.25,
+  "documentHash": "3792708122cc08225f624151d57eb4ef5749968296f98b7af7b667d523b716e6",
+  "moduleId": "corpus/shards/typing",
+  "planId": "187af3108f70ec544668caa844de4b4e051b29d4731a85acaa15fc16a0000f29",
+  "roots": [
+    {
+      "argumentCount": 1,
+      "children": [
+        {
+          "cardinality": "single",
+          "children": [],
+          "constraints": [],
+          "field": "Agent.__typename",
+          "graphs": ["urn:cartoql:shard:typing"],
+          "inverse": false,
+          "itemType": { "iri": "", "kind": "class" },
+          "itemTypeConstraints": [],
+          "kind": "FieldExpansion",
+          "path": "urn:cartoql:computed:__typename",
+          "responseKey": "__typename",
+          "returnsTypename": {
+            "https://cartoql.example/corpus/typing#Agent": "Agent",
+            "https://cartoql.example/corpus/typing#Organization": "Organization",
+            "https://cartoql.example/corpus/typing#Person": "Person"
+          }
+        },
+        {
+          "cardinality": "single",
+          "children": [],
+          "constraints": [],
+          "field": "Person.email",
+          "graphs": ["urn:cartoql:shard:typing"],
+          "inverse": false,
+          "itemType": {
+            "iri": "http://www.w3.org/2001/XMLSchema#string",
+            "kind": "datatype"
+          },
+          "itemTypeConstraints": [],
+          "kind": "FieldExpansion",
+          "path": "https://cartoql.example/corpus/typing#email",
+          "responseKey": "email",
+          "typeCondition": "https://cartoql.example/corpus/typing#Person"
+        },
+        {
+          "cardinality": "single",
+          "children": [],
+          "constraints": [],
+          "field": "Organization.crewSize",
+          "graphs": ["urn:cartoql:shard:typing"],
+          "inverse": false,
+          "itemType": {
+            "iri": "http://www.w3.org/2001/XMLSchema#integer",
+            "kind": "datatype"
+          },
+          "itemTypeConstraints": [],
+          "kind": "FieldExpansion",
+          "path": "https://cartoql.example/corpus/typing#crewSize",
+          "responseKey": "crewSize",
+          "typeCondition": "https://cartoql.example/corpus/typing#Organization"
+        },
+        {
+          "cardinality": "single",
+          "children": [],
+          "constraints": [],
+          "field": "Agent.name",
+          "graphs": ["urn:cartoql:shard:typing"],
+          "inverse": false,
+          "itemType": {
+            "iri": "http://www.w3.org/2001/XMLSchema#string",
+            "kind": "datatype"
+          },
+          "itemTypeConstraints": [],
+          "kind": "FieldExpansion",
+          "path": "https://cartoql.example/corpus/typing#name",
+          "responseKey": "name"
+        }
+      ],
+      "connectionShaping": { "edges": true, "pageInfo": false },
+      "constraints": ["explicit-graph"],
+      "graphs": ["urn:cartoql:shard:typing"],
+      "kind": "EntityLookup",
+      "mode": "scan",
+      "pagination": { "defaultFirst": 20, "first": 20 },
+      "rootField": "agents",
+      "targetClass": "https://cartoql.example/corpus/typing#Agent",
+      "typeName": "Agent"
+    }
+  ],
+  "schemaHash": "79cfa1a50b3b7d95cbe1fd9a137009c163766f8ea93dbea7fbda1c6f11c8b816"
+}
