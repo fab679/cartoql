@@ -1,29 +1,25 @@
 {
-  "name": "cartoql",
-  "private": true,
-  "version": "0.0.1",
-  "description": "GraphQL over RDF, compiled with a plan-level security kernel. Monorepo root.",
+  "name": "cartoql-monorepo",
+  "version": "0.1.0",
+  "description": "GraphQL over RDF, compiled with a plan-level security kernel \u2014 typed, versioned, security-compiled query plans over any SPARQL 1.1 store",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
-  "workspaces": [
-    "packages/*",
-    "packages/adapters/*"
-  ],
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "npm run -s typecheck && vitest run --silent",
+    "build": "esbuild packages/gateway/src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.js --external:n3 --external:jose --external:graphql --banner:js=\"#!/usr/bin/env node\"",
     "corpus:check": "vitest run corpus",
     "corpus:snapshot:core": "tsx scripts/emit-core-sdl.ts && tsx scripts/emit-core-plans.ts && tsx scripts/emit-core-responses.ts && tsx scripts/emit-core-sparql.ts",
-    "serve": "tsx packages/gateway/src/cli.ts",
     "corpus:snapshot:sec": "tsx scripts/emit-sec.ts",
-    "corpus:snapshot:typing": "tsx scripts/emit-typing.ts"
+    "corpus:snapshot:typing": "tsx scripts/emit-typing.ts",
+    "serve": "tsx packages/gateway/src/cli.ts"
   },
   "devDependencies": {
     "@types/n3": "^1.26.4",
     "@types/node": "^20.19.43",
+    "esbuild": "^0.28.2",
     "graphql": "^16.9.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
@@ -31,5 +27,10 @@
   },
   "dependencies": {
     "jose": "^6.2.12"
-  }
+  },
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/adapters/*"
+  ]
 }

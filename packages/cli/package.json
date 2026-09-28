@@ -1,0 +1,20 @@
+{
+  "name": "cartoql",
+  "version": "0.1.0",
+  "description": "GraphQL over RDF, compiled with a plan-level security kernel — typed, versioned, security-compiled query plans over any SPARQL 1.1 store",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/fab679/cartoql",
+  "homepage": "https://github.com/fab679/cartoql",
+  "engines": { "node": ">=20" },
+  "bin": { "cartoql": "dist/cli.js", "cartoql-gateway": "dist/cli.js" },
+  "files": ["dist", "README.md"],
+  "dependencies": {
+    "graphql": "^16.9.0",
+    "jose": "^6.0.0",
+    "n3": "^2.1.0"
+  },
+  "scripts": {
+    "build": "esbuild ../gateway/src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.js --external:n3 --external:jose --external:graphql --banner:js=#!/usr/bin/env\\ node"
+  }
+}

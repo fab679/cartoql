@@ -54,3 +54,5 @@ jobs:
       - name: L0 parity suite (sparql-http vs reference, live Oxigraph)
         run: npm run -s test 2>&1 | grep -E "parity|L0" || echo "parity suite ran as part of npm test"
       - run: npm run corpus:check
+      - name: Build the field console (packages/ui)
+        run: npm run -w @cartoql/ui build

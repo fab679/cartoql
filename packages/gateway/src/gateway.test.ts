@@ -220,3 +220,56 @@ describe('gateway: observability contract (docs/10)', () => {
     ).toThrow(/unknown config section/)
   })
 })
+
+// -======- Gap-closure: browser surface — CORS, /sdl, OPTIONS, --ui serving -======- //
+
+describe('gateway: browser-facing surface', () => {
+  it('GET /sdl serves the compiled schema sheet with CORS headers', async () => {
+    const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core' })
+    gateway.server.listen(0)
+    try {
+      const response = await fetch(`${gateway.url}/sdl`)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('access-control-allow-origin')).toBe('*')
+      expect(await response.text()).toContain('type Query')
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('OPTIONS prefights cross-origin consoles', async () => {
+    const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core' })
+    gateway.server.listen(0)
+    try {
+      const response = await fetch(`${gateway.url}/graphql`, { method: 'OPTIONS' })
+      expect(response.status).toBe(204)
+      expect(response.headers.get('access-control-allow-headers')).toContain('x-cartoql-principal')
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('--ui serves the SPA at / and hashed assets (with traversal guard)', async () => {
+    const gateway = startGateway({
+      ontologyFile,
+      shapesFile,
+      dataFile,
+      moduleId: 'corpus/shards/core',
+      uiDir: fileURLToPath(new URL('../../../packages/ui/dist/', import.meta.url)),
+    })
+    gateway.server.listen(0)
+    try {
+      const shell = await (await fetch(`${gateway.url}/`)).text()
+      expect(shell).toContain('<div id="root"')
+      const assetMatch = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(shell)
+      expect(assetMatch).not.toBeNull()
+      const asset = await fetch(`${gateway.url}/${assetMatch![0]}`)
+      expect(asset.headers.get('content-type')).toContain('text/javascript')
+      // traversal: ../../ reads outside uiDir → refused or fallback (never leaks)
+      const secretAttempt = await fetch(`${gateway.url}/../../package.json`)
+      expect(secretAttempt.status === 403 || secretAttempt.status === 200 && !((await secretAttempt.text()).includes('"name"'))).toBe(true)
+    } finally {
+      await gateway.close()
+    }
+  })
+})

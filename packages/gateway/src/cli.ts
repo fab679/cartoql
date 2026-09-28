@@ -15,6 +15,7 @@
  *                     Default: urn:cartoql:dataset:default. The store must hold
  *                     the data in this named graph in SPARQL mode.
  *   --config FILE    cartoql.json path (docs/10; explicit flags override file values)
+ *   --ui DIR          serve a built UI (packages/ui/dist) statically at /
  *   --metrics off    disable ALL metric families (docs/10 toggle; default: all on)
  *   --port     N      bind port (default: ephemeral, printed on startup)
  */
@@ -46,6 +47,7 @@ const gateway = startGateway({
   aclGraph: flag('acl-graph'),
   stampsFile: flag('stamps'),
   configFile: flag('config'),
+  uiDir: flag('ui'),
   metricsFamilies: flag('metrics') === 'off' ? null : undefined,
   budgets: {
     ...(flag('max-cost') ? { maxCost: Number.parseInt(flag('max-cost')!, 10) } : {}),

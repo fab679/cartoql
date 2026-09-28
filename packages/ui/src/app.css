@@ -1,0 +1,107 @@
+/* cartoql field console: an instrument in ink and chart-paper brass. */
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #12181b;        /* instrument body */
+  --color-ink-2: #1a2125;      /* raised panel */
+  --color-ink-3: #222b30;      /* hover panel */
+  --color-line: #2c363c;       /* contour hairline */
+  --color-line-2: #3d4a52;     /* primary borders */
+  --color-brass: #c9a96b;      /* survey brass: keys, brand, accents */
+  --color-brass-dim: #8a744e;
+  --color-terrain: #7fa6a0;    /* topo green: data values, success */
+  --color-spec-red: #c96a5e;  /* survey red: denials, over-budget */
+  --color-paper: #e7e2d3;     /* chart-paper text */
+  --color-paper-dim: #a8a497; /* secondary text */
+  --font-mono: ui-monospace, 'IBM Plex Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brass);
+  color: var(--color-ink);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 1px;
+}
+
+textarea,
+input,
+select {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+}
+
+/* the one ornament: topographic contours behind the response record header */
+.contours {
+  background-image: repeating-radial-gradient(
+    circle at 120% -20%,
+    transparent 0,
+    transparent 14px,
+    rgba(127, 166, 160, 0.05) 14px,
+    rgba(127, 166, 160, 0.05) 15px
+  );
+}
+
+/* the orchestrated moment: one contour pulse when a record lands */
+@keyframes land {
+  from {
+    box-shadow: inset 0 0 0 1px var(--color-brass);
+  }
+  to {
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+}
+.record-land {
+  animation: land 900ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-land {
+    animation: none;
+  }
+}
+
+/* rotated denial stamp */
+.stamp-tilt {
+  transform: rotate(-1.2deg);
+}
+
+/* thin scrollbars for the instrument */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-2) transparent;
+}
+
+/* the editor overlay: text renders only in the highlight layer; the textarea
+   keeps its caret — the double-print is the classic misalignment (caught on
+   the first screenshot) */
+.editor-text {
+  color: transparent;
+  caret-color: var(--color-paper);
+}

@@ -17,8 +17,9 @@
  * `CQL_*` error-code surface (docs/03 Part II) lands with M2's directive pass —
  * the gateway never invents codes before the contract does.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
+import { resolve, join } from 'node:path'
 import { buildSchema, parse, validate } from 'graphql'
 import { generateSdl } from '../../generator/src/index.js'
 import { compileDocument, CompilerError, type CartoQLModule } from '../../core/src/compiler.js'
@@ -70,6 +71,8 @@ export interface ServeOptions {
   budgets?: BudgetLimits
   /** cartoql.json path (docs/10): file values apply, explicit flags override. */
   configFile?: string
+  /** Serve a built SPA (packages/ui) statically — index.html fallback for GETs. */
+  uiDir?: string
   /** Metrics families to record (docs/10: absent = never recorded). */
   metricsFamilies?: readonly MetricFamily[] | null
 }
@@ -78,6 +81,43 @@ export interface RunningGateway {
   readonly server: Server
   readonly url: string
   readonly close: () => Promise<void>
+}
+
+const MIME: Readonly<Record<string, string>> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+}
+
+/**
+ * Static SPA serving with an index.html fallback and a traversal guard (files
+ * resolve inside uiDir or refuse). The UI is a built artifact — this server
+ * never interprets it, only ships bytes.
+ */
+function serveStatic(
+  urlPath: string,
+  uiDir: string,
+  send: (status: number, body: unknown, contentType?: string) => void,
+): void {
+  const clean = decodeURIComponent(urlPath.split('?')[0] ?? '/')
+  const base = resolve(uiDir)
+  const candidate = resolve(join(base, clean === '/' ? 'index.html' : clean.replace(/^\/+/, '')))
+  if (!candidate.startsWith(base)) {
+    send(403, 'forbidden', 'text/plain')
+    return
+  }
+  const target = existsSync(candidate) && statSync(candidate).isFile()
+    ? candidate
+    : join(base, 'index.html') // SPA fallback
+  const ext = target.slice(target.lastIndexOf('.'))
+  // read as UTF-8: the send() wrapper passes strings through unwrapped — Buffers
+  // would JSON-stringify into a {"type":"Buffer"} blob (a live-curl caught it)
+  send(200, readFileSync(target, 'utf-8'), MIME[ext] ?? 'text/plain')
 }
 
 export function startGateway(options: ServeOptions): RunningGateway {
@@ -126,7 +166,19 @@ export function startGateway(options: ServeOptions): RunningGateway {
           ...(options.jwtGroupsClaim ? { groupsClaim: options.jwtGroupsClaim } : {}),
         })
       : options.authFile
-        ? new StaticResolver(JSON.parse(readFileSync(options.authFile, 'utf-8')) as Record<string, string[]>)
+        ? (() => {
+            // claims file: { "alice": ["hr-comp"] } OR { groups: {...}, roles: {...} }
+            const claims = JSON.parse(readFileSync(options.authFile!, 'utf-8')) as unknown
+            if (claims !== null && typeof claims === 'object' && 'groups' in (claims as object)) {
+              const split = claims as { groups?: Record<string, string[]>; roles?: Record<string, string[]> }
+              return new StaticResolver(
+                (split.groups ?? {}) as Record<string, string[]>,
+                'static-1',
+                (split.roles ?? {}) as Record<string, string[]>,
+              )
+            }
+            return new StaticResolver(claims as Record<string, string[]>)
+          })()
         : new OpenResolver()
   const module: CartoQLModule = {
     moduleId: generated.moduleId,
@@ -184,11 +236,32 @@ export function startGateway(options: ServeOptions): RunningGateway {
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const send = (status: number, body: unknown, contentType = 'application/json'): void => {
-      res.writeHead(status, { 'content-type': contentType })
+      // v0 CORS: browsers (packages/ui, embedder consoles) talk cross-origin by
+      // design. Credentials never ride CORS — authorization/x-cartoql-principal
+      // are explicit headers from the calling origin's own code.
+      res.writeHead(status, {
+        'content-type': contentType,
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': 'content-type, authorization, x-cartoql-principal',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+      })
       res.end(typeof body === 'string' ? body : JSON.stringify(body))
     }
 
     try {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'access-control-allow-origin': '*',
+          'access-control-allow-headers': 'content-type, authorization, x-cartoql-principal',
+          'access-control-allow-methods': 'GET, POST, OPTIONS',
+        })
+        res.end()
+        return
+      }
+      if (req.method === 'GET' && req.url === '/sdl') {
+        // the compiled schema sheet: what adopters integrate against
+        return send(200, generated.sdl, 'text/plain; charset=utf-8')
+      }
       if (req.method === 'GET' && req.url === '/metrics') {
         // docs/10 Prometheus exposition; gated by family toggles at the collector
         return send(200, metrics.render(), 'text/plain; version=0.0.4; charset=utf-8')
@@ -230,7 +303,8 @@ export function startGateway(options: ServeOptions): RunningGateway {
           provenance: 'off (M3)',
         })
       }
-      if (req.method === 'GET' && (req.url === '/playground' || req.url === '/')) {
+      // with --ui the SPA owns '/', the playground stays at /playground
+      if (req.method === 'GET' && (req.url === '/playground' || (options.uiDir === undefined && req.url === '/'))) {
         return send(200, playgroundHtml(), 'text/html; charset=utf-8')
       }
       if (req.method === 'POST' && req.url === '/graphql') {
@@ -293,7 +367,10 @@ export function startGateway(options: ServeOptions): RunningGateway {
         finish(200)
         return send(200, response)
       }
-      return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /playground, GET /health' }] })
+      if (options.uiDir !== undefined && req.method === 'GET' && req.url !== undefined) {
+        return serveStatic(req.url, options.uiDir, send)
+      }
+      return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /sdl, GET /health, GET /playground' }] })
     } catch (err) {
       if (err instanceof CompilerError || err instanceof ExecutorError) {
         return send(400, { errors: [{ message: err.message, extensions: { name: err.name } }] })
