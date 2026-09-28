@@ -1,0 +1,14 @@
+# sec shard ontology — field-gated and type-gated visibility (M2 slice 1 fixtures)
+@prefix vsec: <https://verax.example/corpus/sec#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+vsec:Organization  a owl:Class ; rdfs:label "Organization" .
+vsec:SensitiveNote a owl:Class ; rdfs:label "SensitiveNote" .
+
+vsec:name         a owl:DatatypeProperty ; rdfs:range xsd:string .
+vsec:salaryBudget a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+vsec:noteOf       a owl:ObjectProperty ;
+                  rdfs:domain vsec:SensitiveNote ;
+                  rdfs:range  vsec:Organization .

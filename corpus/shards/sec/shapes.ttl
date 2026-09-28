@@ -1,0 +1,31 @@
+# sec shard shapes — salaryBudget stamped @requireGroup("hr-comp"), SensitiveNote
+# type-stamped @requireGroup("legal") (see stamps.json)
+@prefix vsec:  <https://verax.example/corpus/sec#> .
+@prefix vshape: <https://verax.example/corpus/sec/shape#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+
+vshape:OrganizationShape a sh:NodeShape ;
+    sh:targetClass vsec:Organization ;
+    sh:property [
+        sh:path vsec:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vsec:salaryBudget ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#decimal> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] .
+
+vshape:SensitiveNoteShape a sh:NodeShape ;
+    sh:targetClass vsec:SensitiveNote ;
+    sh:property [
+        sh:path vsec:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vsec:noteOf ;
+        sh:class vsec:Organization ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] .

@@ -38,7 +38,9 @@ import {
   type StoreAdapter,
 } from '../../../core/src/executor.js'
 import type { VeraxModule } from '../../../core/src/compiler.js'
-import type { EntityLookup, FieldExpansion, Plan } from '../../../core/src/ir.js'
+import type { SecurityContext } from '../../../core/src/executor.js'
+import type { AlgebraNode, EntityLookup, FieldExpansion, Plan } from '../../../core/src/ir.js'
+import { securityConstraints } from '../../../core/src/security.js'
 
 /** Docs/06 D2-adjacent guard: the inlined LIMIT literal lives inside this bound. */
 export const MAX_PAGE = 500
@@ -254,6 +256,11 @@ interface SparqlRowSet {
   readonly results: { readonly bindings: readonly Row[] }
 }
 
+function rootHasSecurityConstraints(node: AlgebraNode): boolean {
+  if (securityConstraints(node.constraints).length > 0) return true
+  return node.children.some(rootHasSecurityConstraints)
+}
+
 export class SparqlHttpAdapter implements StoreAdapter {
   readonly name = 'sparql-http'
   readonly conformance = 'L0' as const
@@ -265,8 +272,28 @@ export class SparqlHttpAdapter implements StoreAdapter {
     this.#mode = options.bindingMode ?? 'auto'
   }
 
-  async run(plan: Plan, module: VeraxModule, variables: ResolvedVariables): Promise<ResponseData> {
+  async run(
+    plan: Plan,
+    module: VeraxModule,
+    variables: ResolvedVariables,
+    security?: SecurityContext,
+  ): Promise<ResponseData> {
     void module
+    // M2 kernel note: security-stamped plans route through the reference adapter
+    // for now. Post-filtering rows *after* the store would leak through counts,
+    // cursors, and hasNextPage — so this adapter refuses rather than approximates.
+    // Constraint pushdown into SPARQL (permission joins in the projected query)
+    // is M2 slice 2; until it lands, fail-closed honesty beats silent leaks.
+    if (plan.roots.some(rootHasSecurityConstraints)) {
+      throw new ExecutorError(
+        'security-stamped plans require the M2 constraint-pushdown kernel — the sparql-http adapter refuses rather than post-filtering (fail closed)',
+      )
+    }
+    if (security && security.view.allowAll !== true) {
+      throw new ExecutorError(
+        'non-open security contexts require constraint pushdown (M2 slice 2) — refusing to serve without kernel support',
+      )
+    }
     if (this.#mode === 'auto') {
       try {
         this.#mode = (await probeProtocolBinding(this.#endpoint)) ? 'protocol' : 'values'

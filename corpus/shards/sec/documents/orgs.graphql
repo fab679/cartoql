@@ -1,0 +1,10 @@
+query Orgs {
+  organizations(first: 10) {
+    edges {
+      node {
+        name
+        salaryBudget
+      }
+    }
+  }
+}

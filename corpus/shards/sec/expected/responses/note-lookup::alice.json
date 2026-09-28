@@ -1,0 +1,1 @@
+{"principalId":"alice","response":{"data":{"sensitiveNote":{"name":"Alpha audit remark","noteOf":{"name":"Alpha GmbH"}}},"errors":[]},"variables":{"iri":"https://verax.example/corpus/sec/data#note-1"},"viewVersion":"static-1"}

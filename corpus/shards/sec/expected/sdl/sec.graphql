@@ -1,0 +1,45 @@
+# @verax/generated — module: corpus/shards/sec
+# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
+# Security-stamped module: directives below are generator-originated (docs/03 rule 1).
+directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT
+
+
+scalar VeraxDecimal
+
+type Organization {
+  name: String!
+  salaryBudget: VeraxDecimal @requireGroup(group: "hr-comp")
+}
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+}
+type OrganizationEdge {
+  node: Organization!
+  cursor: String!
+}
+
+type SensitiveNote @requireGroup(group: "legal") {
+  name: String!
+  noteOf: Organization!
+}
+type SensitiveNoteConnection {
+  edges: [SensitiveNoteEdge!]!
+  pageInfo: PageInfo!
+}
+type SensitiveNoteEdge {
+  node: SensitiveNote!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type Query {
+  organization(iri: ID!): Organization
+  organizations(first: Int = 20, after: String): OrganizationConnection
+  sensitiveNote(iri: ID!): SensitiveNote
+  sensitiveNotes(first: Int = 20, after: String): SensitiveNoteConnection
+}

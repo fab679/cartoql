@@ -1,0 +1,4 @@
+[
+  { "onField": "Organization.salaryBudget", "requireGroup": "hr-comp" },
+  { "onType": "SensitiveNote", "requireGroup": "legal" }
+]

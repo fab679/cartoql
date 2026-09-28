@@ -1,0 +1,8 @@
+query NoteLookup($iri: ID!) {
+  sensitiveNote(iri: $iri) {
+    name
+    noteOf {
+      name
+    }
+  }
+}

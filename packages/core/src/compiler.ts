@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto'
 import {
   GraphQLError,
   parse,
+  visit,
   type DocumentNode,
   type FieldNode,
   type GraphQLSchema,
@@ -74,12 +75,36 @@ export interface VeraxModule {
   readonly datasetGraphs: readonly string[]
 }
 
+/**
+ * Registry directives must never originate from clients (docs/03 rule 1): any
+ * security-set directive appearing in a request document is rejected wholesale
+ * with the typed code — ignored-not-silently is the failure mode that breeds
+ * both support tickets and false confidence.
+ */
+const REGISTRY_DIRECTIVES = new Set(['requireGroup'])
+const VX_DIRECTIVE_REJECTED = 'VX_DIRECTIVE_REJECTED'
+
 export function compileDocument(source: string, module: VeraxModule): Plan {
   let document: DocumentNode
   try {
     document = parse(source)
   } catch (err) {
     throw new CompilerError(`document does not parse: ${(err as GraphQLError).message}`)
+  }
+
+  // client-supplied registry directives: reject the whole document.
+  // graphql's visit() is the AST-walker here — a hand-rolled one walked into
+  // circular loc/token structures once already (never again).
+  const offending = new Set<string>()
+  visit(document, {
+    Directive: (node) => {
+      if (REGISTRY_DIRECTIVES.has(node.name.value)) offending.add(node.name.value)
+    },
+  })
+  if (offending.size > 0) {
+    throw new CompilerError(
+      `${VX_DIRECTIVE_REJECTED}: client documents may not supply security directives (${[...offending].sort().join(', ')})`,
+    )
   }
 
   if (document.definitions.some((d) => d.kind === 'FragmentDefinition')) {
@@ -121,6 +146,7 @@ export function compileDocument(source: string, module: VeraxModule): Plan {
   }
 }
 
+/** Recursive visitor over the request AST collecting registry directives (all node kinds). */
 function compileRootField(field: FieldNode, module: VeraxModule): AlgebraNode {
   const name = field.name.value
   if (name.startsWith('__')) throw new CompilerError(`system field ${name} is not plan-compilable in v0`)
@@ -145,7 +171,7 @@ function compileRootField(field: FieldNode, module: VeraxModule): AlgebraNode {
       iri,
       argumentCount: Object.keys(args).length,
       graphs,
-      constraints: ['explicit-graph'],
+      constraints: ['explicit-graph', ...typeLevelConstraints(module, root.typeName)],
       children,
     }
   }
@@ -197,7 +223,7 @@ function compileRootField(field: FieldNode, module: VeraxModule): AlgebraNode {
     },
     connectionShaping: { edges: shaping.edges, pageInfo: shaping.pageInfo },
     graphs,
-    constraints: ['explicit-graph'],
+    constraints: ['explicit-graph', ...typeLevelConstraints(module, root.typeName)],
     children: shaping.entityChildren,
   }
 }
@@ -236,6 +262,8 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
       ? ({ kind: 'datatype', iri: mapped.datatype } as const)
       : ({ kind: 'class', iri: mapped.itemClass ?? '' } as const)
 
+    // Generator-stamped directives travel from the SDL into the IR here —
+    // docs/03 rule 1: constraints only ever accumulate on this readonly list.
     children.push({
       kind: 'FieldExpansion',
       field: key,
@@ -244,7 +272,7 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
       cardinality: mapped.cardinality,
       itemType,
       graphs: module.datasetGraphs,
-      constraints: [],
+      constraints: fieldLevelConstraints(module, typeName, fieldName),
       children:
         mapped.itemTypeName && selection.selectionSet
           ? compileEntityChildren(selection.selectionSet, mapped.itemTypeName, module)
@@ -266,6 +294,39 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
  * arguments are rejected loudly in v0 — enums later compile to IN-bindings
  * over declared values (docs/06), never to inline text.
  */
+/**
+ * Read @requireGroup stamps off the schema's type definitions into IR
+ * constraint IDs. The SDL is the stamped artifact; parsing the *request* can
+ * never add or satisfy a registry directive (walkDocumentNode rejects them).
+ */
+function directivesToConstraints(astNode: { directives?: readonly { name: { value: string }; arguments?: readonly { name: { value: string }; value: { kind: string; value?: unknown } }[] }[] } | undefined | null): string[] {
+  const out: string[] = []
+  for (const directive of astNode?.directives ?? []) {
+    if (directive.name.value !== 'requireGroup') continue
+    const groupArg = directive.arguments?.find((a) => a.name.value === 'group')
+    const group = groupArg && 'value' in groupArg.value ? String(groupArg.value.value ?? '') : ''
+    if (group === '') {
+      throw new CompilerError('stamped @requireGroup without a group argument — build drift, refusing')
+    }
+    out.push(`group:${group}`)
+  }
+  return out
+}
+
+function typeLevelConstraints(module: VeraxModule, typeName: string): string[] {
+  const type = module.schema.getType(typeName)
+  const astNode = type?.astNode
+  if (!astNode) return []
+  return directivesToConstraints(astNode)
+}
+
+function fieldLevelConstraints(module: VeraxModule, typeName: string, fieldName: string): string[] {
+  const type = module.schema.getType(typeName)
+  const field = type && 'getFields' in type ? type.getFields()[fieldName] : undefined
+  if (!field?.astNode) return []
+  return directivesToConstraints(field.astNode)
+}
+
 function collectArgs(field: FieldNode): Record<string, Binding> {
   const out: Record<string, Binding> = {}
   for (const arg of field.arguments ?? []) {

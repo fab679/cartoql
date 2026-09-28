@@ -59,12 +59,16 @@ export interface GeneratedField {
   cardinality: 'single' | 'list'
   /** GraphQL type name when this field references another exposed class. */
   itemTypeName?: string
+  /** Generator-stamped group gate, rendered as @requireGroup (docs/03). */
+  stamp?: string
 }
 
 export interface GeneratedType {
   name: string
   targetClass: string
   fields: GeneratedField[]
+  /** Generator-stamped type-level group gate → @requireGroup on the type. */
+  typeStamp?: string
 }
 
 /** Field/root → SHACL-path contract: the compiler's input map (see @verax/core's identical structural type). */
@@ -88,6 +92,19 @@ export interface SemanticMap {
 export interface GenerateSdlOptions {
   /** Explicit graph set the module is scoped to (stamped into plans, docs/06 D10). */
   datasetGraphs?: readonly string[]
+  /**
+   * Security stamps (docs/03: directives are generator-stamped only — the single
+   * place security semantics ever originate). M2 slice 1 covers @requireGroup at
+   * field and type level; each future directive extends this table.
+   */
+  stamps?: readonly StampRule[]
+}
+
+/** One stamp: a group gate at a field ({ onField: 'Person.salary' }) or type level. */
+export interface StampRule {
+  readonly onField?: string
+  readonly onType?: string
+  readonly requireGroup: string
 }
 
 export interface GeneratedSdl {
@@ -268,7 +285,8 @@ export function generateSdl(
     roots[plural] = { typeName: t2.name, targetClass: t2.targetClass, mode: 'list', defaultPageSize: 20 }
   }
 
-  const sdl = renderSdl(moduleId, types)
+  applyStamps(types, options.stamps ?? [])
+  const sdl = renderSdl(moduleId, types, options.stamps ?? [])
   return {
     moduleId,
     sdl,
@@ -351,7 +369,33 @@ function readProperty(shapes: Store, propertyShape: Term): RawProperty {
   }
 }
 
-function renderSdl(moduleId: string, types: GeneratedType[]): string {
+/**
+ * Stamps land as SDL directives (docs/03 rule 1: generator-stamped only).
+ * Failures here are build errors: a stamp targeting a missing type/field means
+ * the security config and the module have drifted — never silently ignored.
+ */
+function applyStamps(types: readonly GeneratedType[], stamps: readonly StampRule[]): void {
+  const byType = new Map(types.map((t2) => [t2.name, t2]))
+  for (const stamp of stamps) {
+    if (stamp.onType) {
+      const target = byType.get(stamp.onType)
+      if (!target) throw new GenerationError(`stamp targets unknown type "${stamp.onType}"`)
+      target.typeStamp = stamp.requireGroup
+    } else if (stamp.onField) {
+      const [typeName, fieldName] = stamp.onField.split('.')
+      const target = byType.get(typeName ?? '')
+      const field = target?.fields.find((f) => f.name === fieldName)
+      if (!target || !field) {
+        throw new GenerationError(`stamp targets unknown field "${stamp.onField}"`)
+      }
+      field.stamp = stamp.requireGroup
+    } else {
+      throw new GenerationError('stamp must provide onType or onField')
+    }
+  }
+}
+
+function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: readonly StampRule[] = []): string {
   // Scalar declarations limited to those actually used, sorted (determinism).
   const usedScalars = new Set<string>()
   for (const t of types) {
@@ -365,6 +409,11 @@ function renderSdl(moduleId: string, types: GeneratedType[]): string {
   const lines: string[] = []
   lines.push(`# @verax/generated — module: ${moduleId}`)
   lines.push('# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.')
+  if (stamps.length > 0) {
+    lines.push('# Security-stamped module: directives below are generator-originated (docs/03 rule 1).')
+    lines.push('directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT')
+    lines.push('')
+  }
   lines.push('')
   for (const scalar of [...usedScalars].sort()) lines.push(`scalar ${scalar}`)
   if (usedScalars.size > 0) lines.push('')
@@ -372,8 +421,12 @@ function renderSdl(moduleId: string, types: GeneratedType[]): string {
   const pageType = (name: string) => `${name}Connection`
 
   for (const t of types) {
-    lines.push(`type ${t.name} {`)
-    for (const f of t.fields) lines.push(`  ${f.name}: ${f.typeRef}`)
+    const typeDirective = t.typeStamp ? ` @requireGroup(group: "${t.typeStamp}")` : ''
+    lines.push(`type ${t.name}${typeDirective} {`)
+    for (const f of t.fields) {
+      const fieldDirective = f.stamp ? ` @requireGroup(group: "${f.stamp}")` : ''
+      lines.push(`  ${f.name}: ${f.typeRef}${fieldDirective}`)
+    }
     lines.push('}')
     // Connection/edge pair for the paginated root (D2: cursor-based, default 20).
     lines.push(`type ${pageType(t.name)} {`)

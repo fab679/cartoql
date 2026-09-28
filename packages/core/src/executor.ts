@@ -11,6 +11,7 @@
 import { createHash } from 'node:crypto'
 import { canonicalJson, type Binding, type Plan } from './ir.js'
 import type { VeraxModule } from './compiler.js'
+import type { PermissionView } from './security.js'
 
 export class ExecutorError extends Error {
   constructor(message: string) {
@@ -72,15 +73,43 @@ export function decodeCursor(cursor: string, expectedGraphHash: string): CursorP
   return payload
 }
 
-/** The shaped GraphQL response data for a plan — wrapped as { data, errors } at the transport. */
+/** One typed error entry: branch on extensions.code, never on message (docs/03 Part II). */
+export interface VeraxError {
+  readonly message: string
+  readonly path?: string
+  readonly extensions: { readonly code: string }
+}
+
+/** The shaped GraphQL response data for a plan — { data, errors } at the transport. */
 export interface ResponseData {
   readonly data: Record<string, unknown>
-  readonly errors: readonly never[] // v0: the executor surface never fabricates error objects; failures throw (fail closed)
+  readonly errors: readonly VeraxError[]
+}
+
+/**
+ * Per-request security context (docs/07: agents run as the human, fail closed).
+ * Absent context = the documented open posture (allowAll view) — tests, standalone
+ * mode; a configured gateway always resolves a real view before calling run().
+ */
+export interface SecurityContext {
+  readonly view: PermissionView
+  readonly principalId: string
 }
 
 /** The adapter SPI (docs/02 §4). Implementations must never see an AST — only compiled plans. */
 export interface StoreAdapter {
   readonly name: string
   readonly conformance: 'reference' | 'L0' | 'L1' | 'L2'
-  run(plan: Plan, module: VeraxModule, variables: ResolvedVariables): Promise<ResponseData>
+  run(
+    plan: Plan,
+    module: VeraxModule,
+    variables: ResolvedVariables,
+    security?: SecurityContext,
+  ): Promise<ResponseData>
 }
+
+/** The open posture as code: what an adapter uses when no security context is supplied. */
+export const OPEN_CONTEXT: SecurityContext = Object.freeze({
+  view: Object.freeze({ groups: new Set<string>(), viewVersion: 'open', allowAll: true }),
+  principalId: 'open',
+})

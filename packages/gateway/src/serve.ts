@@ -22,7 +22,7 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { buildSchema, parse, validate } from 'graphql'
 import { generateSdl } from '../../generator/src/index.js'
 import { compileDocument, CompilerError, type VeraxModule } from '../../core/src/compiler.js'
-import { ExecutorError } from '../../core/src/executor.js'
+import { ExecutorError, type ResponseData } from '../../core/src/executor.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
@@ -70,7 +70,7 @@ export function startGateway(options: ServeOptions): RunningGateway {
   }
 
   let adapterName: string
-  let run: (plan: ReturnType<typeof compileDocument>, vars: Record<string, string | number | boolean | null>) => Promise<{ data: Record<string, unknown>; errors: readonly never[] }>
+  let run: (plan: ReturnType<typeof compileDocument>, vars: Record<string, string | number | boolean | null>) => ResponseData | Promise<ResponseData>
   if (options.dataFile) {
     const adapter = ReferenceAdapter.fromTurtle(readFileSync(options.dataFile, 'utf-8'), module.datasetGraphs)
     adapterName = `reference (${options.dataFile})`

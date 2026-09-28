@@ -15,7 +15,9 @@
 | 06 D8 language-tag negotiation | `shards/multilang/` | shard pending |
 | 06 D9 DISTINCT on binding-set | `shards/graphs/` (cross-graph duplicate) | shard pending |
 | 06 D10 explicit graph constraint | `documents/*.graphql` → `expected/plans/*.json`: every IR node carries a non-empty `graphs` set (`urn:verax:shard:core`) + compiler test | **plan-backed (compiler v0)** |
-| 03 enforcement rules 1–3 | `leakprobes/filtering/`, `leakprobes/probes/` | probes pending M2 |
+| 03 enforcement rule 1 (stamping only) | generator stamps config → SDL `@requireGroup`; client-supplied registry directives reject wholesale (`VX_DIRECTIVE_REJECTED`, graphql `visit()` gate) — core/security.test.ts | **backed (M2 slice 1)** |
+| 03 enforcement rule 3 (two-track) | `shards/sec/`: field denial → null + typed error (visible); entity gating → pre-window filtering, invisible≡absent pair assertions, empty-population scans, zero error entries — reference/security.test.ts | **backed (M2 slice 1)** |
+| 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
 | 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
 | 08 single-plan execution | `documents/*.graphql` → one plan per document (`expected/plans/`, stem-to-root layout); adapter execution pending | **plan snapshots landed**; executor pending |
 | 09 L0 adapter parity | reference adapter defines L0 semantics; sparql-http now *executes* end to end with live response-equivalence vs reference over Oxigraph 0.5.10 — deep-equal across all reference docs, page-through cursors, absent-entity shapes; parity suite in CI (services container + shard preloaded to named graph) | **backed, live in CI** |

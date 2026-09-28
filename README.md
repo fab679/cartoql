@@ -86,9 +86,15 @@ npm run serve -- \
 
 Oxigraph (and any store that ignores SPARQL protocol variable bindings) is
 handled by the adapter's auto-selected VALUES transport — never by weakening
-the no-interpolation rule. Remaining for M1: npm packaging for `npx
-verax-gateway` and the external-tester milestone. M2 then layers the security
-compilation kernel. See the [roadmap](docs/05-roadmap.md).
+the no-interpolation rule. The M2 security kernel has begun: SHACL shape + stamp configurations generate
+`@requireGroup` directives; the compiler translates them into plan-level
+constraints, and the adapter enforces the spec's two-track semantics (docs/03) —
+field denial is visible (`null` + `VX_PERMISSION_DENIED`), entity gating is
+existence-blind (invisible ≡ absent, pair-tested). The reviewed evidence lives in
+`corpus/shards/sec/` with per-principal response snapshots.
+
+Remaining for M1: npm packaging for `npx verax-gateway` and the external-tester
+milestone. See the [roadmap](docs/05-roadmap.md).
 
 ## Documentation
 

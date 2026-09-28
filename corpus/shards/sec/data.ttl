@@ -1,0 +1,11 @@
+# sec shard data — budget-bearing and budget-less orgs; two sensitive notes
+@prefix vsec: <https://verax.example/corpus/sec#> .
+@prefix vdata: <https://verax.example/corpus/sec/data#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+vdata:org-alpha a vsec:Organization ; vsec:name "Alpha GmbH" ; vsec:salaryBudget "1200000"^^xsd:decimal .
+vdata:org-beta  a vsec:Organization ; vsec:name "Beta AB" .
+vdata:org-gamma a vsec:Organization ; vsec:name "Gamma SA" ; vsec:salaryBudget "555000"^^xsd:decimal .
+
+vdata:note-1 a vsec:SensitiveNote ; vsec:name "Alpha audit remark" ; vsec:noteOf vdata:org-alpha .
+vdata:note-2 a vsec:SensitiveNote ; vsec:name "Beta compliance check" ; vsec:noteOf vdata:org-beta .
