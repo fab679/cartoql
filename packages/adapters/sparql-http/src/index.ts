@@ -35,12 +35,13 @@ import {
   resolveBinding,
   type ResolvedVariables,
   type ResponseData,
+  type SecurityContext,
   type StoreAdapter,
+  type VeraxError,
 } from '../../../core/src/executor.js'
 import type { VeraxModule } from '../../../core/src/compiler.js'
-import type { SecurityContext } from '../../../core/src/executor.js'
 import type { AlgebraNode, EntityLookup, FieldExpansion, Plan } from '../../../core/src/ir.js'
-import { securityConstraints } from '../../../core/src/security.js'
+import { evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
 
 /** Docs/06 D2-adjacent guard: the inlined LIMIT literal lives inside this bound. */
 export const MAX_PAGE = 500
@@ -89,11 +90,29 @@ export function projectVars(root: EntityLookup, rootIndex: number): ProjectedRoo
   }
 }
 
+export interface SecurityProjection {
+  readonly security: SecurityContext
+  /** The store-side ACL graph the gates join against (module.aclGraph). */
+  readonly aclGraph: string
+}
+
+/** The kernel v1 ACL vocabulary — IRIs are a registry-fixed scheme (docs/03). */
+export const ACL_MEMBER_OF = 'urn:verax:acl:memberOf'
+export const groupIri = (group: string): string => `urn:verax:acl:group:${group}`
+export const principalIri = (principalId: string): string => `urn:verax:acl:principal:${principalId}`
+
+/** SPARQL gate for one group constraint, referencing the transport-bound principal. */
+function aclGate(constraint: string, aclGraph: string): string {
+  const group = constraint.slice('group:'.length)
+  return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_MEMBER_OF}> <${groupIri(group)}> } })`
+}
+
 export function projectRoot(
   root: EntityLookup,
   rootIndex: number,
   variables: ResolvedVariables,
   mode: BindingMode = 'protocol',
+  security?: SecurityProjection,
 ): SparqlRequest {
   const projected = projectVars(root, rootIndex)
   const e = projected.entityVar
@@ -101,11 +120,28 @@ export function projectRoot(
   const selected: string[] = [e]
   const expansions: string[] = []
 
-  emitFields(expansions, selected, projected.fields, e)
+  const gatesFor = (constraints: readonly string[]): readonly string[] => {
+    if (security === undefined) return []
+    return securityConstraints(constraints).map((c) => aclGate(c, security.aclGraph))
+  }
 
+  emitFields(expansions, selected, projected.fields, e, gatesFor)
+
+  const rootGates = gatesFor(root.constraints)
   const scope = root.graphs[0] ?? 'urn:verax:dataset:default'
   const typePattern = `  ?${e} a <${root.targetClass}> .`
   const where: string[] = []
+
+  // principal rides via the guarded transport, exactly like client values (D7
+  // discipline applies to kernel-supplied terms too — same VALUES position)
+  const bindPrincipal = (target: string[]): void => {
+    const term = `<${principalIriTermSafe(security?.security.principalId ?? 'anonymous')}>`
+    if (mode === 'protocol') {
+      bindings['verax_principal'] = term
+    } else {
+      target.push(`  VALUES ?verax_principal { ${term} }`)
+    }
+  }
 
   if (mode === 'auto') {
     throw new ExecutorError("bindingMode 'auto' is resolved by the adapter, not the projection — pass 'protocol' or 'values'")
@@ -124,6 +160,10 @@ export function projectRoot(
       throw new ExecutorError(`${root.rootField}: iri must bind to a non-empty string`)
     }
     where.push(`  GRAPH <${scope}> {`, typePattern, ...expansions, `  }`)
+    // entity-level gates: invisible entities resolve zero rows in-store —
+    // existence-blind *including* at the store boundary
+    for (const gate of rootGates) where.push(`  ${gate}`)
+    if (security !== undefined) bindPrincipal(where)
     transport(where, e, `<${iriTermSafe(iri)}>`)
   } else {
     // LIMIT counts result ROWS and OPTIONAL fan-out multiplies rows per entity,
@@ -143,6 +183,11 @@ export function projectRoot(
       // the row) — STR() comparison is the defined, portable form.
       inner.push(`    FILTER(STR(?${e}) > STR(?${e}_after))`)
     }
+    // entity gates live INSIDE the window sub-select: gated entities leave the
+    // population before LIMIT — counts/cursors/hasNextPage see visible only.
+    // The principal binds here because the gate references it in this scope.
+    if (security !== undefined) bindPrincipal(inner)
+    for (const gate of rootGates) inner.push(`    ${gate}`)
     where.push(
       `  { SELECT ?${e}`,
       '  WHERE {',
@@ -154,6 +199,11 @@ export function projectRoot(
       ...expansions,
       '  }',
     )
+    // field-level gates in the expansions reference the principal too — bind the
+    // outer scope when any gate will look it up there
+    if (security !== undefined && projectedFieldsHaveGates(projected)) {
+      bindPrincipal(where)
+    }
   }
 
   // Scan roots: outer ORDER BY makes row order deterministic — engines are not
@@ -169,19 +219,44 @@ function emitFields(
   selected: string[],
   fields: readonly ProjectedField[],
   parentVar: string,
+  gatesFor: (constraints: readonly string[]) => readonly string[],
 ): void {
   fields.forEach((f) => {
     const arrow = f.node.inverse ? `^<${f.node.path}>` : `<${f.node.path}>`
     selected.push(f.leafVar)
+    // field gates wrap the field's OPTIONAL contents: an unmet gate yields no
+    // bindings for the field — the store enforces the null, existence-blind
+    const gates = gatesFor(f.node.constraints)
     if (f.childVar) {
       selected.push(f.childVar)
       patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.childVar} .`)
-      emitFields(patterns, selected, f.children, f.childVar)
+      for (const g of gates) patterns.push(`    ${g}`)
+      emitFields(patterns, selected, f.children, f.childVar, gatesFor)
       patterns.push('  }')
-    } else {
+    } else if (gates.length === 0) {
       patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.leafVar} }`)
+    } else {
+      patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.leafVar}`)
+      for (const g of gates) patterns.push(`    ${g}`)
+      patterns.push('  }')
     }
   })
+}
+
+function projectedFieldsHaveGates(projected: ProjectedRoot): boolean {
+  const walk = (fields: readonly ProjectedField[]): boolean =>
+    fields.some(
+      (f) => securityConstraints(f.node.constraints).length > 0 || walk(f.children),
+    )
+  return walk(projected.fields)
+}
+
+/** Kernel-supplied IRIs get the same term-syntax guard as client values. */
+function principalIriTermSafe(principalId: string): string {
+  if (/[^a-zA-Z0-9:._-]/.test(principalId)) {
+    throw new ExecutorError('principal id is not representable in the ACL IRI scheme — refused')
+  }
+  return principalIri(principalId)
 }
 
 /** The page size as the client sees it (without the hasNextPage +1). */
@@ -278,20 +353,25 @@ export class SparqlHttpAdapter implements StoreAdapter {
     variables: ResolvedVariables,
     security?: SecurityContext,
   ): Promise<ResponseData> {
-    void module
-    // M2 kernel note: security-stamped plans route through the reference adapter
-    // for now. Post-filtering rows *after* the store would leak through counts,
-    // cursors, and hasNextPage — so this adapter refuses rather than approximates.
-    // Constraint pushdown into SPARQL (permission joins in the projected query)
-    // is M2 slice 2; until it lands, fail-closed honesty beats silent leaks.
-    if (plan.roots.some(rootHasSecurityConstraints)) {
+    // Kernel routing (M2 slice 2): stamped plans enforce IN THE STORE — gates
+    // join the module's ACL graph inside the projected query. Everything that
+    // would be an approximation is still a refusal:
+    //   - stamped plan without a security context (open posture makes stamps
+    //     meaningless — the stamping governance cannot have meant that)
+    //   - stamped plan without module.aclGraph (no store-side facts to join)
+    const stamped = plan.roots.some(rootHasSecurityConstraints)
+    const securityProjection: SecurityProjection | undefined =
+      stamped && security !== undefined && module.aclGraph !== undefined
+        ? { security, aclGraph: module.aclGraph }
+        : undefined
+    if (stamped && security === undefined) {
       throw new ExecutorError(
-        'security-stamped plans require the M2 constraint-pushdown kernel — the sparql-http adapter refuses rather than post-filtering (fail closed)',
+        'security-stamped plan without a security context — the open posture makes stamps meaningless; refusing (fail closed)',
       )
     }
-    if (security && security.view.allowAll !== true) {
+    if (stamped && security !== undefined && module.aclGraph === undefined) {
       throw new ExecutorError(
-        'non-open security contexts require constraint pushdown (M2 slice 2) — refusing to serve without kernel support',
+        'security-stamped plan but the module declares no aclGraph — no store-side membership facts to join; refusing (fail closed)',
       )
     }
     if (this.#mode === 'auto') {
@@ -302,20 +382,27 @@ export class SparqlHttpAdapter implements StoreAdapter {
       }
     }
 
+    const errors: VeraxError[] = []
     const data: Record<string, unknown> = {}
     for (const [index, root] of plan.roots.entries()) {
       if (root.kind !== 'EntityLookup') {
         throw new ExecutorError(`sparql-http adapter v0 only accepts EntityLookup roots, got ${root.kind}`)
       }
-      const request = projectRoot(root, index, variables, this.#mode === 'protocol' ? 'protocol' : 'values')
+      const request = projectRoot(
+        root,
+        index,
+        variables,
+        this.#mode === 'protocol' ? 'protocol' : 'values',
+        securityProjection,
+      )
       const rows = await this.#execute(request)
       const projected = projectVars(root, index)
       data[root.rootField] =
         root.mode === 'single'
-          ? assembleSingle(projected, rows)
-          : assembleScan(projected, rows, variables)
+          ? assembleSingle(projected, rows, security, errors)
+          : assembleScan(projected, rows, variables, security, errors)
     }
-    return { data, errors: [] }
+    return { data, errors }
   }
 
   async #execute(request: SparqlRequest): Promise<SparqlRowSet> {
@@ -341,15 +428,22 @@ export class SparqlHttpAdapter implements StoreAdapter {
 // Assembly: SPARQL result rows → GraphQL response values (response-equivalence)
 // ---------------------------------------------------------------------------
 
-function assembleSingle(projected: ProjectedRoot, rows: SparqlRowSet): Record<string, unknown> | null {
+function assembleSingle(
+  projected: ProjectedRoot,
+  rows: SparqlRowSet,
+  security: SecurityContext | undefined,
+  errors: VeraxError[],
+): Record<string, unknown> | null {
   if (rows.results.bindings.length === 0) return null // absent and invisible share one shape
-  return buildEntity(rows.results.bindings, projected.fields)
+  return buildEntity(rows.results.bindings, projected.fields, security, errors)
 }
 
 function assembleScan(
   projected: ProjectedRoot,
   rows: SparqlRowSet,
   variables: ResolvedVariables,
+  security: SecurityContext | undefined,
+  errors: VeraxError[],
 ): Record<string, unknown> {
   const root = projected.root
   // projection guaranteed ORDER BY ?entity + LIMIT size+1: distinct in result order
@@ -374,6 +468,8 @@ function assembleScan(
       node: buildEntity(
         rows.results.bindings.filter((r) => r[projected.entityVar]?.value === iri),
         projected.fields,
+        security,
+        errors,
       ),
       cursor: encodeCursor({ orderByKey: ORDER_BY_IRI, lastValue: iri, lastIRI: iri, graphHash }),
     }))
@@ -395,10 +491,31 @@ function assembleScan(
   return result
 }
 
-function buildEntity(rows: readonly Row[], fields: readonly ProjectedField[]): Record<string, unknown> {
+function buildEntity(
+  rows: readonly Row[],
+  fields: readonly ProjectedField[],
+  security: SecurityContext | undefined,
+  errors: VeraxError[],
+): Record<string, unknown> {
   const entity: Record<string, unknown> = {}
   for (const f of fields) {
     const name = f.node.field.split('.')[1]!
+    // View-based denial, mirroring the reference adapter exactly (the visible
+    // track: null plus a typed error; the store-side gate already ensured the
+    // rows agree). Entity gating, by contrast, never reaches here — it filtered
+    // populations store-side: zero rows in, zero entries out (blind track).
+    const denied = security !== undefined && securityConstraints(f.node.constraints).some(
+      (c) => !evaluateConstraint(c, security.view).visible,
+    )
+    if (denied) {
+      errors.push({
+        message: `field ${f.node.field} requires authorization the principal does not hold`,
+        path: f.node.field,
+        extensions: { code: 'VX_PERMISSION_DENIED' },
+      })
+      entity[name] = null
+      continue
+    }
     if (f.childVar === undefined) {
       const values = [...new Set(rows.map((r) => r[f.leafVar]?.value).filter((v): v is string => v !== undefined))].sort()
       entity[name] = f.node.cardinality === 'single' ? values[0] ?? null : values
@@ -406,7 +523,7 @@ function buildEntity(rows: readonly Row[], fields: readonly ProjectedField[]): R
       const childVar = f.childVar
       const childIris = [...new Set(rows.map((r) => r[childVar]?.value).filter((v): v is string => v !== undefined))].sort()
       const subEntities = childIris.map((iri) =>
-        buildEntity(rows.filter((r) => r[childVar]?.value === iri), f.children),
+        buildEntity(rows.filter((r) => r[childVar]?.value === iri), f.children, security, errors),
       )
       entity[name] = f.node.cardinality === 'single' ? subEntities[0] ?? null : subEntities
     }

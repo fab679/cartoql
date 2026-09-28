@@ -73,6 +73,12 @@ export interface VeraxModule {
   readonly semanticMap: SemanticMap
   /** Explicit graph set stamped onto every plan node (D10). */
   readonly datasetGraphs: readonly string[]
+  /**
+   * ACL graph scope (M2 slice 2): the store-side membership graph the SPARQL
+   * projection joins against (urn:...:memberOf / principal/group vocabulary).
+   * Missing on unstamped modules; required for stamped plans to run store-side.
+   */
+  readonly aclGraph?: string
 }
 
 /**

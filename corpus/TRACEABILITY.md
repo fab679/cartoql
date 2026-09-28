@@ -16,7 +16,8 @@
 | 06 D9 DISTINCT on binding-set | `shards/graphs/` (cross-graph duplicate) | shard pending |
 | 06 D10 explicit graph constraint | `documents/*.graphql` → `expected/plans/*.json`: every IR node carries a non-empty `graphs` set (`urn:verax:shard:core`) + compiler test | **plan-backed (compiler v0)** |
 | 03 enforcement rule 1 (stamping only) | generator stamps config → SDL `@requireGroup`; client-supplied registry directives reject wholesale (`VX_DIRECTIVE_REJECTED`, graphql `visit()` gate) — core/security.test.ts | **backed (M2 slice 1)** |
-| 03 enforcement rule 3 (two-track) | `shards/sec/`: field denial → null + typed error (visible); entity gating → pre-window filtering, invisible≡absent pair assertions, empty-population scans, zero error entries — reference/security.test.ts | **backed (M2 slice 1)** |
+| 03 enforcement rule 3 (two-track) | `shards/sec/`: field denial → null + typed error (visible); entity gating → pre-window filtering, invisible≡absent pair assertions, empty-population scans, zero error entries — reference/security.test.ts | **backed (M2 slice 1)**; store-side (slice 2) below |
+| M2 constraint pushdown (store-side) | `shards/sec/acl.ttl` (membership facts; kernel-v1 vocabulary) + sparql-http gate injection: field gates wrap OPTIONALS, entity gates live INSIDE window sub-selects; live parity — 3 docs × 3 principals through both enforcement paths, data AND errors — sparql-http/security.test.ts + parity suite in CI | **backed (M2 slice 2)** |
 | 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
 | 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
 | 08 single-plan execution | `documents/*.graphql` → one plan per document (`expected/plans/`, stem-to-root layout); adapter execution pending | **plan snapshots landed**; executor pending |

@@ -22,10 +22,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Load gold shard into Oxigraph (named graph, D10)
+      - name: Load gold + sec shards into Oxigraph (named graphs, D10)
         run: |
           curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Acore' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/core/data.ttl
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Asec' \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/data.ttl
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Asec-acl' \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/acl.ttl
       - run: npm run typecheck
       - run: npm run test
       - name: L0 parity suite (sparql-http vs reference, live Oxigraph)

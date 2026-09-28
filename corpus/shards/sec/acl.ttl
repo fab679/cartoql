@@ -1,0 +1,9 @@
+# sec shard ACL graph — the store-side materialization of the permission view
+# (docs/07 model: ACLs are synced facts, KMap-style embedders keep them fresh).
+# Vocabulary (kernel v1): urn:verax:acl:memberOf | urn:verax:acl:principal:<id>
+#                         urn:verax:acl:group:<name>
+@prefix vacl: <urn:verax:acl:> .
+
+vacl:principal:alice vacl:memberOf vacl:group:hr-comp .
+vacl:principal:alice vacl:memberOf vacl:group:legal .
+# bob holds no groups — every gate evaluates false against this graph

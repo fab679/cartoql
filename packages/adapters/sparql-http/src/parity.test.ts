@@ -101,3 +101,74 @@ function runWhen(cond: string | undefined, fn: () => unknown): void {
   if (cond) void fn()
 }
 void suite
+
+// -======- Security parity: constraint pushdown vs reference, live -======- //
+// The sec shard must respond identically through BOTH enforcement paths:
+// reference (view-evaluated) and sparql-http (ACL-graph joins in-store) —
+// including error entries, which are view-derived on both sides.
+
+const secShard = fileURLToPath(new URL('../../../../corpus/shards/sec/', import.meta.url))
+const secOntology = readFileSync(join(secShard, 'ontology.ttl'), 'utf-8')
+const secShapes = readFileSync(join(secShard, 'shapes.ttl'), 'utf-8')
+const secData = readFileSync(join(secShard, 'data.ttl'), 'utf-8')
+const secStamps = JSON.parse(readFileSync(join(secShard, 'stamps.json'), 'utf-8'))
+
+const secGenerated = generateSdl(
+  { ontology: secOntology, shapes: secShapes },
+  'corpus/shards/sec',
+  { datasetGraphs: ['urn:verax:shard:sec'], stamps: secStamps },
+)
+const secModule = {
+  moduleId: secGenerated.moduleId,
+  schemaHash: secGenerated.schemaHash,
+  schema: buildSchema(secGenerated.sdl),
+  semanticMap: secGenerated.semanticMap,
+  datasetGraphs: secGenerated.datasetGraphs,
+  aclGraph: 'urn:verax:shard:sec-acl',
+}
+const secReference = ReferenceAdapter.fromTurtle(secData, secModule.datasetGraphs)
+
+const secCtx = (principalId: string, groups: readonly string[]) => ({
+  principalId,
+  view: { groups: new Set(groups), viewVersion: 'static-1' },
+})
+const SEC_PRINCIPALS = [
+  ['alice', ['hr-comp', 'legal']],
+  ['bob', []],
+  ['stranger', []],
+] as const
+
+describe.skipIf(!endpoint)('L0 security parity: constraint pushdown vs reference (live Oxigraph)', () => {
+  let secAdapter: SparqlHttpAdapter
+  beforeAll(async () => {
+    secAdapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+  })
+
+  const secDocs = readdirSync(join(secShard, 'documents')).filter((f) => f.endsWith('.graphql')).sort()
+
+  it.each(secDocs)('%s: field/entity gating identical through both enforcement paths', async (doc) => {
+    const source = readFileSync(join(secShard, 'documents', doc), 'utf-8')
+    const variables = JSON.parse(readFileSync(join(secShard, 'documents', doc.replace(/\.graphql$/, '.vars.json')), 'utf-8'))
+    const plan = compileDocument(source, secModule)
+    for (const [principalId, groups] of SEC_PRINCIPALS) {
+      const ctx = secCtx(principalId, groups)
+      const throughStore = await secAdapter.run(plan, secModule, variables, ctx)
+      const throughKernel = await secReference.run(plan, secModule, variables, ctx)
+      // errors TOO — the visible track must match, not just data
+      expect(throughStore.errors, `${doc}/${principalId} errors`).toEqual(throughKernel.errors)
+      expect(throughStore.data, `${doc}/${principalId} data`).toEqual(throughKernel.data)
+    }
+  })
+
+  it('gated entities are existence-blind THROUGH the store: windows never include them', async () => {
+    const source = readFileSync(join(secShard, 'documents/notes-scan.graphql'), 'utf-8')
+    const plan = compileDocument(source, secModule)
+    const ctx = secCtx('bob', [])
+    const result = await secAdapter.run(plan, secModule, {}, ctx)
+    const conn = result.data['sensitiveNotes'] as { edges: unknown[]; pageInfo: { hasNextPage: boolean } }
+    expect(conn.edges).toEqual([])
+    expect(conn.pageInfo.hasNextPage).toBe(false)
+    // and no error entry anywhere — invisibility, not denial
+    expect(result.errors).toEqual([])
+  })
+})
