@@ -85,16 +85,16 @@ export function RightRail({ sdl, onInsertQuery }: { readonly sdl: string; readon
                   <span className={section.kind === 'enum' ? 'text-terrain/80' : section.kind === 'interface' ? 'text-brass-dim' : 'text-paper-dim'}>
                     {section.kind.slice(0, 3)}
                   </span>
-                  <span className="font-semibold text-paper">{section.name}</span>
+                  <span className="truncate font-semibold text-paper" title={section.name}>{section.name}</span>
                 </summary>
                 <div className="px-5 pb-2">
                   {section.body.split('\n').map((line) => {
                     const tokens = line.split(/(:\s)/)
                     const isRootField = section.name.includes('Query')
                     return (
-                      <div key={line} className="flex items-baseline gap-1 text-[11.5px]">
-                        <span className="text-terrain">{tokens[0]}</span>
-                        <span className="text-paper-dim">{line.slice(tokens[0]!.length)}</span>
+                      <div key={line} className="flex min-w-0 items-baseline gap-1 text-[11.5px]">
+                        <span className="shrink-0 text-terrain">{tokens[0]}</span>
+                        <span className="min-w-0 truncate text-paper-dim" title={line}>{line.slice(tokens[0]!.length)}</span>
                         {isRootField && onInsertQuery !== undefined ? (
                           <button
                             type="button"

@@ -259,10 +259,10 @@ export function App() {
 
       {notice !== null ? <div className="border-b border-line-2 bg-spec-red/10 px-3 py-1 text-[12px] text-spec-red">{notice}</div> : null}
 
-      <main className="flex min-h-0 flex-1 overflow-x-auto">
+      <main className="flex min-h-0 flex-1">
         <section
-          className="relative flex min-h-0 shrink-0 grow-0 flex-col"
-          style={{ width: 'min(42rem, 55vw)' }}
+          className="relative flex min-h-0 flex-col"
+          style={{ flex: '1 1 55%', minWidth: '18rem' }}
         >
           <div className="flex items-center justify-between border-b border-line/60 px-2 py-1 text-[11px]">
             <label className="flex items-center gap-1 text-paper-dim">
@@ -319,10 +319,13 @@ export function App() {
           <>
             <ColumnResize
               ariaLabel="resize response panel"
-              onResize={(delta) => setResponseWidth((w) => Math.min(64, Math.max(20, w - delta / 16)))}
+              onResize={(delta) => setResponseWidth((w) => Math.min(60, Math.max(20, w - (delta / Math.max(640, window.innerWidth)) * 100)))}
               onReset={() => setResponseWidth(40)}
             />
-            <section style={{ width: `${responseWidth}rem` }} className="flex min-h-0 shrink-0 grow-0 flex-col border-l border-line bg-ink-2">
+            <section
+              style={{ width: `${Math.min(60, Math.max(20, responseWidth))}%`, minWidth: '14rem' }}
+              className="flex min-h-0 shrink flex-col border-l border-line bg-ink-2"
+            >
           <div className="flex flex-wrap items-center gap-2 border-b border-line px-2 py-1">
             <span className="text-[11px] tracking-wider text-paper-dim">RESPONSE</span>
             {response !== null ? (
@@ -348,10 +351,10 @@ export function App() {
           <>
             <ColumnResize
               ariaLabel="resize schema rail"
-              onResize={(delta) => setRailWidth((w) => Math.min(32, Math.max(12, w - delta / 16)))}
+              onResize={(delta) => setRailWidth((w) => Math.min(24, Math.max(10, w - delta / 16)))}
               onReset={() => setRailWidth(16)}
             />
-            <span style={{ width: `${railWidth}rem` }} className="flex min-h-0 shrink-0">
+            <span style={{ width: `${Math.min(24, Math.max(10, railWidth))}rem`, minWidth: '11rem' }} className="flex min-h-0 shrink">
               <RightRail sdl={sdlText} onInsertQuery={(query) => setTab({ query })} />
             </span>
           </>
