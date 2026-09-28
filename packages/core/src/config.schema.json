@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "verax.json",
+  "description": "Verax gateway configuration (docs/10): no behavior that isn't in config or SDL.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "prefix": { "type": "string" },
+          "shapes": { "type": "string" },
+          "ontology": { "type": "string" }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "stamping": { "type": "string" },
+        "resolver": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["open", "static", "jwt-groups", "oidc-introspect"]
+            }
+          }
+        }
+      }
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpoints": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxCost": { "type": "number" },
+        "maxDepth": { "type": "number" },
+        "maxNodes": { "type": "number" }
+      }
+    },
+    "caching": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "planCacheMax": { "type": "number" }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metricsFamilies": {
+          "type": "array",
+          "items": { "enum": ["requests", "compile", "plan_cache", "adapter", "spi"] }
+        },
+        "logLevel": { "enum": ["debug", "info", "warn", "error"] }
+      }
+    },
+    "protocolOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overlapWindowMonths": { "type": "number" }
+      }
+    }
+  }
+}

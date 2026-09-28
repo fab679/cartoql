@@ -14,6 +14,8 @@
  *   --graph    IRI    dataset graph scope (D10 — e.g. urn:verax:shard:core).
  *                     Default: urn:verax:dataset:default. The store must hold
  *                     the data in this named graph in SPARQL mode.
+ *   --config FILE    verax.json path (docs/10; explicit flags override file values)
+ *   --metrics off    disable ALL metric families (docs/10 toggle; default: all on)
  *   --port     N      bind port (default: ephemeral, printed on startup)
  */
 import { startGateway } from './serve.js'
@@ -43,6 +45,8 @@ const gateway = startGateway({
   jwtGroupsClaim: flag('jwt-groups-claim'),
   aclGraph: flag('acl-graph'),
   stampsFile: flag('stamps'),
+  configFile: flag('config'),
+  metricsFamilies: flag('metrics') === 'off' ? null : undefined,
   budgets: {
     ...(flag('max-cost') ? { maxCost: Number.parseInt(flag('max-cost')!, 10) } : {}),
     ...(flag('max-depth') ? { maxDepth: Number.parseInt(flag('max-depth')!, 10) } : {}),

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { tmpdir } from 'node:os'
 import { startGateway } from './serve.js'
 
 const shardRoot = fileURLToPath(new URL('../../../corpus/shards/core/', import.meta.url))
@@ -125,5 +126,97 @@ describe('gateway: budget gate (docs/08, threat T3) — rejection is typed, pre-
     } finally {
       await gateway.close()
     }
+  })
+})
+
+// -======- Gap-closure 7: observability + explain + config boot (docs/10) -======- //
+
+describe('gateway: observability contract (docs/10)', () => {
+  it('GET /metrics renders the families the requests produced', async () => {
+    const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core' })
+    gateway.server.listen(0)
+    try {
+      await fetch(`${gateway.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'query { people(first: 2) { edges { node { name } } } }' }),
+      })
+      const text = await (await fetch(`${gateway.url}/metrics`)).text()
+      expect(text).toContain('requests_total{code="200",surface="graphql"} 1')
+      expect(text).toContain('plan_cache_misses_total 1')
+      // hit the same document: cache counters move, not request totals semantics
+      await fetch(`${gateway.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'query { people(first: 2) { edges { node { name } } } }' }),
+      })
+      const after = await (await fetch(`${gateway.url}/metrics`)).text()
+      expect(after).toContain('plan_cache_hits_total 1')
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('--metrics off records NOTHING anywhere (the toggle rule, end to end)', async () => {
+    const gateway = startGateway({
+      ontologyFile,
+      shapesFile,
+      dataFile,
+      moduleId: 'corpus/shards/core',
+      metricsFamilies: null,
+    })
+    gateway.server.listen(0)
+    try {
+      await fetch(`${gateway.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'query { people(first: 2) { edges { node { name } } } }' }),
+      })
+      const text = await (await fetch(`${gateway.url}/metrics`)).text()
+      expect(text.trim()).toBe('')
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('POST /explain previews cost without executing (threat T3 mitigation)', async () => {
+    const gateway = startGateway({
+      ontologyFile,
+      shapesFile,
+      dataFile,
+      moduleId: 'corpus/shards/core',
+      budgets: { maxCost: 1 },
+    })
+    gateway.server.listen(0)
+    try {
+      const expensive = await (
+        await fetch(`${gateway.url}/explain`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ query: 'query { people(first: 5) { edges { node { name worksFor { name } } } } }' }),
+        })
+      ).json()
+      const asExplain = expensive as { cost: number; withinBudget: boolean; depth: number; nodeCount: number; planId: string }
+      expect(asExplain.cost).toBeGreaterThan(1)
+      expect(asExplain.withinBudget).toBe(false) // preview WITHOUT rejection — clients self-fix
+      expect(asExplain.planId).toMatch(/^[0-9a-f]{64}$/)
+      // and the same document POSTed for real gets the typed VX rejection
+      const rejected = await fetch(`${gateway.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'query { people(first: 5) { edges { node { name worksFor { name } } } } }' }),
+      })
+      expect(rejected.status).toBe(400)
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('invalid verax.json refuses at BOOT with the typed ConfigError', () => {
+    const badConfig = join(tmpdir(), 'verax-bad.json')
+    writeFileSync(badConfig, JSON.stringify({ nonsenseSection: true }))
+    expect(() =>
+      startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core', configFile: badConfig }),
+    ).toThrow(/unknown config section/)
   })
 })

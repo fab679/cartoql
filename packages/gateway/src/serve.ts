@@ -32,6 +32,9 @@ import {
 import { jwtGroupsResolver } from '../../core/src/providers.js'
 import { BudgetError, enforceBudgets, DEFAULT_BUDGETS, type BudgetLimits } from '../../core/src/budgets.js'
 import type { Plan } from '../../core/src/ir.js'
+import { loadConfig, type VeraxConfig } from '../../core/src/config.js'
+import { planDepth, planNodeCount } from '../../core/src/ir.js'
+import { Metrics, logLine, type MetricFamily } from '../../core/src/metrics.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
@@ -65,6 +68,10 @@ export interface ServeOptions {
   stampsFile?: string
   /** Budget gates (docs/08; threat T3's mitigation, now live): VX_QUERY_TOO_COMPLEX. */
   budgets?: BudgetLimits
+  /** verax.json path (docs/10): file values apply, explicit flags override. */
+  configFile?: string
+  /** Metrics families to record (docs/10: absent = never recorded). */
+  metricsFamilies?: readonly MetricFamily[] | null
 }
 
 export interface RunningGateway {
@@ -80,6 +87,20 @@ export function startGateway(options: ServeOptions): RunningGateway {
   if (!options.sparqlEndpoint && !options.dataFile) {
     throw new Error('no store configured: pass --data file.ttl (reference mode) or --sparql URL (once landing)')
   }
+
+  // verax.json loads AT BOOT (docs/10: operator surprises are support debt):
+  // invalid files refuse the process, not the request
+  let fileConfig: VeraxConfig = {}
+  if (options.configFile !== undefined) {
+    fileConfig = loadConfig(readFileSync(options.configFile, 'utf-8'))
+  }
+  const budgets: BudgetLimits = options.budgets ?? fileConfig.budgets ?? DEFAULT_BUDGETS
+  const metrics = new Metrics({
+    families:
+      options.metricsFamilies === null
+        ? []
+        : (options.metricsFamilies ?? fileConfig.observability?.metricsFamilies),
+  })
 
   const ontology = readFileSync(options.ontologyFile, 'utf-8')
   const shapes = readFileSync(options.shapesFile, 'utf-8')
@@ -139,15 +160,23 @@ export function startGateway(options: ServeOptions): RunningGateway {
   // keys this cache — enforcement happens at run time against the live view, so
   // a cached plan cannot stale-serve security.
   const planCache = new Map<string, Plan>()
-  const PLAN_CACHE_MAX = 512
+  const PLAN_CACHE_MAX = fileConfig.caching?.planCacheMax ?? 512
   const compileCached = (source: string): Plan => {
     const key = `${module.schemaHash}:${source}`
     const hit = planCache.get(key)
-    if (hit !== undefined) return hit
+    if (hit !== undefined) {
+      metrics.inc('plan_cache', 'plan_cache_hits_total')
+      return hit
+    }
+    metrics.inc('plan_cache', 'plan_cache_misses_total')
+    const compileTimer = metrics.timer('compile')
     const plan = compileDocument(source, module)
-    enforceBudgets(plan, options.budgets ?? DEFAULT_BUDGETS) // reject pre-execution
+    compileTimer()
+    metrics.inc('compile', 'compile_cost_total', {}, plan.cost)
+    enforceBudgets(plan, budgets) // reject pre-execution
     if (planCache.size >= PLAN_CACHE_MAX) {
       planCache.delete(planCache.keys().next().value as string)
+      metrics.inc('plan_cache', 'plan_cache_evictions_total')
     }
     planCache.set(key, plan)
     return plan
@@ -160,6 +189,35 @@ export function startGateway(options: ServeOptions): RunningGateway {
     }
 
     try {
+      if (req.method === 'GET' && req.url === '/metrics') {
+        // docs/10 Prometheus exposition; gated by family toggles at the collector
+        return send(200, metrics.render(), 'text/plain; version=0.0.4; charset=utf-8')
+      }
+      if (req.method === 'POST' && req.url === '/explain') {
+        // threat T3's client-side mitigation: the cost PREVIEW operators and
+        // clients use to self-fix before rejection (no data leaves this path)
+        const body = await readBody(req)
+        let parsed: { query?: unknown }
+        try {
+          parsed = JSON.parse(body) as typeof parsed
+        } catch {
+          return send(400, { errors: [{ message: 'request body must be JSON' }] })
+        }
+        if (typeof parsed.query !== 'string') return send(400, { errors: [{ message: 'missing "query" string' }] })
+        try {
+          const plan = compileDocument(parsed.query, module)
+          return send(200, {
+            planId: plan.planId,
+            cost: plan.cost,
+            depth: (planDepth(plan)),
+            nodeCount: (planNodeCount(plan)),
+            budgets,
+            withinBudget: (() => { try { enforceBudgets(plan, budgets); return true } catch { return false } })(),
+          })
+        } catch (err) {
+          return send(400, { errors: [{ message: (err as Error).message }] })
+        }
+      }
       if (req.method === 'GET' && req.url === '/health') {
         // docs/10: operators must never discover security posture by accident
         return send(200, {
@@ -176,6 +234,15 @@ export function startGateway(options: ServeOptions): RunningGateway {
         return send(200, playgroundHtml(), 'text/html; charset=utf-8')
       }
       if (req.method === 'POST' && req.url === '/graphql') {
+        const requestId = crypto.randomUUID()
+        const requestTimer = metrics.timer('requests', { surface: 'graphql' })
+        const finish = (status: number): void => {
+          requestTimer()
+          metrics.inc('requests', 'requests_total', { surface: 'graphql', code: String(status) })
+          // docs/10 structured log: fields never free text; never result data,
+          // never principal identities (audit channel owns attribution)
+          console.log(logLine('graphql_request', { requestId, status, schemaHash: module.schemaHash.slice(0, 12) }))
+        }
         const body = await readBody(req)
         let parsed: { query?: unknown; variables?: unknown }
         try {
@@ -198,6 +265,7 @@ export function startGateway(options: ServeOptions): RunningGateway {
         try {
           plan = compileCached(parsed.query)
         } catch (err) {
+          finish(400) // budget rejection counts as a compile rejection (not served)
           if (err instanceof BudgetError) {
             // typed pre-execution rejection — the limits ride in extensions so
             // clients can self-fix instead of guessing
@@ -222,6 +290,7 @@ export function startGateway(options: ServeOptions): RunningGateway {
         const bearer = authz?.startsWith('Bearer ') ? authz.slice('Bearer '.length) : undefined
         const view = await resolveView(resolver, { principalId, credentials: { bearer } })
         const response = await run(plan, variables, { view, principalId })
+        finish(200)
         return send(200, response)
       }
       return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /playground, GET /health' }] })
