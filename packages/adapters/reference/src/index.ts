@@ -114,27 +114,56 @@ export class ReferenceAdapter implements StoreAdapter {
     security: SecurityContext,
     errors: VeraxError[],
   ): Record<string, unknown> {
-    // Existence-blind population: gated entities leave before windowing, so
-    // counts, cursors, and hasNextPage describe only the visible world.
+    // Population, in order (each stage narrows the world before windowing,
+    // so counts/cursors/hasNextPage describe only what survives):
+    //   1. existence-blind entity gating (docs/07)
+    //   2. equality filters — lexical STR() equality (docs/06)
+    //   3. ordering: field key (ASC/DESC) with stable IRI tiebreak, or canonical IRI (D6)
+    const ordering = root.ordering
+    const orderByKey = ordering?.orderByKey ?? ORDER_BY_IRI
+    const ordValue = (iri: string): string => {
+      if (ordering?.path === undefined) return iri
+      const values = this.#store.getObjects(iri, ordering.path, null).map((v) => v.value).sort()
+      return values[0] ?? ''
+    }
+    const asc = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+    const dir = ordering?.direction === 'DESC' ? -1 : 1
+    const cmpEntries = (aOrd: string, aIri: string, bOrd: string, bIri: string): number => {
+      const byOrd = dir * asc(aOrd, bOrd)
+      return byOrd !== 0 ? byOrd : asc(aIri, bIri) // stable IRI tiebreak, always ascending
+    }
+    const filters = (root.eqFilters ?? []).map((f) => ({
+      path: f.path,
+      value: String(resolveBinding(f.binding, variables, `${root.rootField}(${f.argName}: …)`) ?? ''),
+    }))
     const all = this.#subjectsOfType(root.targetClass)
       .filter(() => this.#entityVisible(root, security))
-      .sort() // canonical order: IRI ascending (D6)
-    const afterTerm = root.pagination?.after !== undefined
-      ? resolveBinding(root.pagination.after, variables, `${root.rootField}(after:)`)
-      : null
+      .filter((iri) => filters.every((f) => this.#store.getObjects(iri, f.path, null).some((v) => v.value === f.value)))
+      .map((iri) => ({ iri, ord: ordValue(iri) }))
+      .sort((a, b) => cmpEntries(a.ord, a.iri, b.ord, b.iri))
+      .map((e) => e.iri)
+    // pagination variables are OPTIONAL (docs/06): absent → canonical/default
+    // behavior; strict binding (fail loud) stays for the lookup IRI and filters
+    const optionalTerm = (binding: { variable: string } | null): string | null => {
+      if (binding === null) return null
+      const value = variables[binding.variable]
+      return value === undefined || value === null ? null : String(value)
+    }
+    const afterTerm = optionalTerm(root.pagination?.after !== undefined ? root.pagination.after as { variable: string } : null)
     let start = 0
     if (typeof afterTerm === 'string' && afterTerm !== '') {
-      const cursor = decodeCursor(afterTerm, this.#scopeHash)
-      start = all.findIndex((iri) => iri > cursor.lastIRI)
+      // cursor ordering must match this query's ordering (executor validates)
+      const cursor = decodeCursor(afterTerm, this.#scopeHash, orderByKey)
+      // pair resume: strictly after (lastValue, lastIRI) in the active ordering
+      start = all.findIndex((iri) => cmpEntries(ordValue(iri), iri, cursor.lastValue, cursor.lastIRI) > 0)
       if (start === -1) start = all.length
     }
-    const first = root.pagination?.first !== undefined
-      ? resolveBinding(root.pagination.first, variables, `${root.rootField}(first:)`)
-      : undefined
-    if (typeof first === 'number' && first < 0) {
-      throw new ExecutorError(`${root.rootField}: first must not be negative`)
+    const firstRaw = optionalTerm(root.pagination?.first !== undefined ? root.pagination.first as never : null)
+    const firstValue = firstRaw === null ? undefined : Number(firstRaw)
+    if (typeof firstValue === 'number' && (!Number.isInteger(firstValue) || firstValue < 0 || firstValue > 500)) {
+      throw new ExecutorError(`${root.rootField}: first must be an integer within 0..500`)
     }
-    const size = typeof first === 'number' ? first : root.pagination?.defaultFirst ?? 20
+    const size = typeof firstValue === 'number' ? firstValue : root.pagination?.defaultFirst ?? 20
     const page = all.slice(start, start + size)
 
     const result: Record<string, unknown> = {}
@@ -142,8 +171,8 @@ export class ReferenceAdapter implements StoreAdapter {
       result['edges'] = page.map((iri) => ({
         node: this.#buildEntity(iri, root.children as readonly FieldExpansion[], security, errors),
         cursor: encodeCursor({
-          orderByKey: ORDER_BY_IRI,
-          lastValue: iri,
+          orderByKey,
+          lastValue: ordValue(iri),
           lastIRI: iri,
           graphHash: this.#scopeHash,
         }),
@@ -155,8 +184,8 @@ export class ReferenceAdapter implements StoreAdapter {
         endCursor: page.length === 0
           ? null
           : encodeCursor({
-              orderByKey: ORDER_BY_IRI,
-              lastValue: page[page.length - 1]!,
+              orderByKey,
+              lastValue: ordValue(page[page.length - 1]!),
               lastIRI: page[page.length - 1]!,
               graphHash: this.#scopeHash,
             }),

@@ -322,6 +322,17 @@ function scalarIriFromTypeRef(typeRef: string): string | undefined {
   return undefined
 }
 
+/**
+ * docs/06 ordering restriction: orderBy members come from single-valued scalar
+ * leaves only (maxCount 1) — sorting on multi-valued or object fields is not
+ * plan-computable. Equality-filter args use the same single-valued scalar set.
+ */
+function scalarLeafArgs(type: GeneratedType): readonly GeneratedField[] {
+  return type.fields.filter(
+    (f) => f.itemTypeName === undefined && f.cardinality === 'single' && !f.name.startsWith('__'),
+  )
+}
+
 function rootNames(typeName: string): { single: string; plural: string } {
   return {
     single: lowerFirst(typeName),
@@ -412,6 +423,10 @@ function applyStamps(types: readonly GeneratedType[], stamps: readonly StampRule
   }
 }
 
+function orderMember(fieldName: string, direction: 'ASC' | 'DESC'): string {
+  return `${fieldName.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase()}_${direction}`
+}
+
 function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: readonly StampRule[] = []): string {
   // Scalar declarations limited to those actually used, sorted (determinism).
   const usedScalars = new Set<string>()
@@ -464,14 +479,32 @@ function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: re
   lines.push('  endCursor: String')
   lines.push('}')
   lines.push('')
-  lines.push('type Query {')
   const queries: string[] = []
+  const orderEnums: string[] = []
   for (const t of types) {
     const { single, plural } = rootNames(t.name)
     queries.push(`${single}(iri: ID!): ${t.name}`)
-    queries.push(`${plural}(first: Int = 20, after: String): ${pageType(t.name)}`)
+
+    // scan-root args: equality filter per single-valued scalar leaf (arg name =
+    // field name) + orderBy enum when orderable fields exist (docs/06)
+    const leaves = scalarLeafArgs(t)
+    const filterArgs = leaves.map((f) => `${f.name}: String`).join(', ')
+    const hasOrdering = leaves.length > 0
+    if (hasOrdering) {
+      const members = leaves
+        .flatMap((f) => [`  ${orderMember(f.name, 'ASC')}`, `  ${orderMember(f.name, 'DESC')}`])
+        .join('\n')
+      orderEnums.push(`enum ${t.name}OrderBy {\n${members}\n}`)
+    }
+    const orderByArg = hasOrdering ? `, orderBy: ${t.name}OrderBy` : ''
+    queries.push(`${plural}(${filterArgs}${leaves.length > 0 ? ', ' : ''}first: Int = 20, after: String${orderByArg}): ${pageType(t.name)}`)
   }
   queries.sort((a, b) => a.localeCompare(b))
+  for (const e of orderEnums) {
+    lines.push(e)
+    lines.push('')
+  }
+  lines.push('type Query {')
   lines.push(...queries.map((q) => `  ${q}`))
   lines.push('}')
 

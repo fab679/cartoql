@@ -1,0 +1,14 @@
+# equality filter (docs/06 gap-closure 3): single-valued scalar leaves only,
+# bound-variable, lexical STR() equality
+query PeopleByName($name: String) {
+  people(name: $name, first: 20) {
+    edges {
+      node {
+        name
+      }
+    }
+    pageInfo {
+      hasNextPage
+    }
+  }
+}

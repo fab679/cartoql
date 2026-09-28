@@ -1,0 +1,14 @@
+SELECT DISTINCT ?v0_e ?v0_e_0_v
+WHERE {
+  { SELECT ?v0_e
+  WHERE {
+    GRAPH <urn:verax:shard:core> { ?v0_e a <https://verax.example/corpus/core#Person> }
+    FILTER(EXISTS { GRAPH <urn:verax:shard:core> { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_filter0_v . FILTER(STR(?v0_e_filter0_v) = "Brin Okafor") } })
+  }
+  ORDER BY ?v0_e
+  LIMIT 21 }
+  GRAPH <urn:verax:shard:core> {
+  OPTIONAL { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_0_v }
+  }
+}
+ORDER BY ?v0_e

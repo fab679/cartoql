@@ -39,9 +39,21 @@ type PageInfo {
   endCursor: String
 }
 
+enum OrganizationOrderBy {
+  NAME_ASC
+  NAME_DESC
+  SALARY_BUDGET_ASC
+  SALARY_BUDGET_DESC
+}
+
+enum SensitiveNoteOrderBy {
+  NAME_ASC
+  NAME_DESC
+}
+
 type Query {
   organization(iri: ID!): Organization
-  organizations(first: Int = 20, after: String): OrganizationConnection
+  organizations(name: String, salaryBudget: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
   sensitiveNote(iri: ID!): SensitiveNote
-  sensitiveNotes(first: Int = 20, after: String): SensitiveNoteConnection
+  sensitiveNotes(name: String, first: Int = 20, after: String, orderBy: SensitiveNoteOrderBy): SensitiveNoteConnection
 }

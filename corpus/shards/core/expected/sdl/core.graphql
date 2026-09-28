@@ -49,11 +49,30 @@ type PageInfo {
   endCursor: String
 }
 
+enum OrganizationOrderBy {
+  FOUNDED_YEAR_ASC
+  FOUNDED_YEAR_DESC
+  NAME_ASC
+  NAME_DESC
+}
+
+enum PersonOrderBy {
+  NAME_ASC
+  NAME_DESC
+}
+
+enum PublicationOrderBy {
+  NAME_ASC
+  NAME_DESC
+  YEAR_ASC
+  YEAR_DESC
+}
+
 type Query {
   organization(iri: ID!): Organization
-  organizations(first: Int = 20, after: String): OrganizationConnection
-  people(first: Int = 20, after: String): PersonConnection
+  organizations(foundedYear: String, name: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
+  people(name: String, first: Int = 20, after: String, orderBy: PersonOrderBy): PersonConnection
   person(iri: ID!): Person
   publication(iri: ID!): Publication
-  publications(first: Int = 20, after: String): PublicationConnection
+  publications(name: String, year: String, first: Int = 20, after: String, orderBy: PublicationOrderBy): PublicationConnection
 }

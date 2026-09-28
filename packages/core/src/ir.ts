@@ -33,6 +33,25 @@ export interface AlgebraNodeBase {
   readonly constraints: readonly string[]
 }
 
+/** Ordering for a scan window: a scalar field key (or canonical IRI), a direction. */
+export interface ScanOrdering {
+  /** `TypeName.fieldName` of a single-valued scalar leaf, or 'IRI' for canonical. */
+  readonly key: string
+  /** The SHACL path of the ordering field — present iif key is a field ordering. */
+  readonly path?: string
+  readonly direction: 'ASC' | 'DESC'
+  /** Cursor orderByKey payload — the wire form identifying this ordering. */
+  readonly orderByKey: string
+}
+
+/** Equality filter over a scalar leaf (docs/06: bound-variable args; lexical equality). */
+export interface EqFilter {
+  readonly argName: string
+  readonly path: Iri
+  /** The client's binding: literal or `{ variable }` — bound at execution, never interpolated. */
+  readonly binding: Binding
+}
+
 /** Root entity retrieval: single lookup by IRI, or full scan (paginated). */
 export interface EntityLookup extends AlgebraNodeBase {
   readonly kind: 'EntityLookup'
@@ -51,6 +70,10 @@ export interface EntityLookup extends AlgebraNodeBase {
     readonly after?: Binding
     readonly defaultFirst: number
   }
+  /** mode === 'scan' only: ordering (absent = canonical IRI ascending, D6). */
+  readonly ordering?: ScanOrdering
+  /** mode === 'scan' only: equality filters. */
+  readonly eqFilters?: readonly EqFilter[]
   /**
    * Connection response shaping (`edges`/`cursor`, `pageInfo`) is a shaping
    * concern, not algebra — recorded here so the executor knows what to build.

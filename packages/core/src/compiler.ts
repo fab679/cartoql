@@ -26,7 +26,9 @@ import {
   compoundingBelow,
   type AlgebraNode,
   type Binding,
+  type EqFilter,
   type Plan,
+  type ScanOrdering,
 } from './ir.js'
 
 // docs/08 cost-model constants (v0). When the cost-model schema lands, these
@@ -268,6 +270,48 @@ function compileRootField(field: FieldNode, module: VeraxModule, fragments: Read
   // Connection roots: edges/cursor/pageInfo are response shaping (recorded as
   // hints); edges.node's sub-selection is the real entity algebra.
   const shaping: ConnectionTaxonomy = { entityChildren: [], edges: false, pageInfo: false }
+
+  // docs/06 gap-closure 3: orderBy (enum → ScanOrdering) and equality-filter
+  // args (single-valued scalar leaves; arg name = field name). Enum args are
+  // the declared-member form: member names are FIELDNAME_DIR, resolved through
+  // the semantic map — an unknown member fails graphql validation at the gateway
+  const eqFilters: EqFilter[] = []
+  let ordering: ScanOrdering | undefined
+  for (const arg of field.arguments ?? []) {
+    if (arg.name.value === 'orderBy') {
+      if (arg.value.kind !== 'EnumValue') {
+        throw new CompilerError('orderBy must be a enum member of the root\'s order enum (e.g. NAME_ASC)')
+      }
+      const member = arg.value.value
+      const splitAt = member.lastIndexOf('_')
+      const fieldPart = splitAt === -1 ? member : member.slice(0, splitAt)
+      const direction = splitAt === -1 ? 'ASC' : member.slice(splitAt + 1)
+      const lowered = fieldPart.toLowerCase()
+      const mappedKey = `${root.typeName}.${lowered}`
+      const mapped = module.semanticMap.fields[mappedKey]
+      if (direction !== 'ASC' && direction !== 'DESC') {
+        throw new CompilerError(`orderBy member "${member}" has no direction suffix — not a generated member`)
+      }
+      if (mapped === undefined || mapped.datatype === undefined || mapped.cardinality !== 'single') {
+        throw new CompilerError(`orderBy member "${member}" is not an orderable single-valued scalar field`)
+      }
+      ordering = {
+        key: mappedKey,
+        path: mapped.pathIri,
+        direction,
+        orderByKey: `urn:verax:ordering:field:${mappedKey}:${direction.toLowerCase()}`,
+      }
+      continue
+    }
+    const mappedKey = `${root.typeName}.${arg.name.value}`
+    const mapped = module.semanticMap.fields[mappedKey]
+    if (mapped !== undefined && mapped.datatype !== undefined && mapped.cardinality === 'single') {
+      eqFilters.push({ argName: arg.name.value, path: mapped.pathIri, binding: valueToBinding(arg.value, `${name}(${arg.name.value}: …)`) })
+      continue
+    }
+    // first/after/iri handled elsewhere; unknown non-schema args fail validation
+  }
+
   for (const selection of flattenSelections(field.selectionSet, `${name}(Connection)`, fragments, `connection ${name}`)) {
     const sel = selection.name.value
     if (sel.startsWith('__')) throw new CompilerError(`system field ${sel} is not plan-compilable in v0`)
@@ -308,6 +352,8 @@ function compileRootField(field: FieldNode, module: VeraxModule, fragments: Read
       defaultFirst: root.defaultPageSize,
     },
     connectionShaping: { edges: shaping.edges, pageInfo: shaping.pageInfo },
+    ordering,
+    eqFilters: eqFilters.length > 0 ? eqFilters : undefined,
     graphs,
     constraints: ['explicit-graph', ...typeLevelConstraints(module, root.typeName)],
     children: shaping.entityChildren,
@@ -418,6 +464,9 @@ function fieldLevelConstraints(module: VeraxModule, typeName: string, fieldName:
 function collectArgs(field: FieldNode): Record<string, Binding> {
   const out: Record<string, Binding> = {}
   for (const arg of field.arguments ?? []) {
+    // orderBy is an enum consumed as an ORDERING by the scan branch (member →
+    // ScanOrdering); generic enum handling below stays fail-loud for anything else
+    if (arg.name.value === 'orderBy') continue
     out[arg.name.value] = valueToBinding(arg.value, `${field.name.value}(${arg.name.value}: …)`)
   }
   return out

@@ -1,0 +1,12 @@
+# filter + field-gate interplay: bob can filter orgs but salaryBudget denial rides
+# the visible track — the filter narrows the population; the gate narrows the field
+query OrgsBudget($name: String) {
+  organizations(name: $name, first: 10) {
+    edges {
+      node {
+        name
+        salaryBudget
+      }
+    }
+  }
+}

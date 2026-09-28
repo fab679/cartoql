@@ -1,0 +1,15 @@
+# orderBy over a single-valued scalar leaf (NAME_DESC) with cursor pagination
+query PeopleOrdered($first: Int, $after: String) {
+  people(first: $first, after: $after, orderBy: NAME_DESC) {
+    edges {
+      node {
+        name
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

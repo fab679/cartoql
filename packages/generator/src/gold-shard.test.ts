@@ -31,9 +31,13 @@ describe('generator: core gold shard (docs/09 snapshot discipline)', () => {
     const queryFields = schema.getQueryType()!.getFields()
     expect(queryFields['person']).toBeDefined()
     expect(queryFields['people']).toBeDefined()
+    // gap-closure 3: scan roots gain equality-filter args (single-valued scalar
+    // leaves, name = field name) and orderBy enum args when orderable
     expect(queryFields['people']!.args.map((a) => a.name).sort()).toEqual([
       'after',
       'first',
+      'name',
+      'orderBy',
     ])
   })
 })

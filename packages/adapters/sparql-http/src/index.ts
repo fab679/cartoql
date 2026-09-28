@@ -32,6 +32,7 @@ import {
   ExecutorError,
   graphScopeHash,
   ORDER_BY_IRI,
+  stringLiteralTerm,
   resolveBinding,
   type ResolvedVariables,
   type ResponseData,
@@ -177,33 +178,78 @@ export function projectRoot(
     // and an outer pattern that expands just that window. The live-store parity
     // run caught both this bug and slice-4's modifiers-inside-WHERE grammar bug.
     const inner: string[] = [`    GRAPH <${scope}> { ?${e} a <${root.targetClass}> }`]
+    const ordering = root.ordering
+    const orderByKey = ordering?.orderByKey ?? ORDER_BY_IRI
+    const ordVar = ordering?.path !== undefined ? `${e}_ord` : undefined
+    if (ordVar !== undefined && ordering?.path !== undefined) {
+      // order key restriction (docs/06): single-valued scalar leaves. The
+      // OPTIONAL carries its own GRAPH scope — the window's type pattern scopes
+      // to the named graph, and so must everything else (D10: no hidden
+      // default-graph access; the live parity run caught exactly this).
+      inner.push(`    OPTIONAL { GRAPH <${scope}> { ?${e} <${ordering.path}> ?${ordVar} } }`)
+    }
     const afterTerm =
       root.pagination?.after !== undefined
         ? resolveOptional(root.pagination.after, variables)
         : null
     if (typeof afterTerm === 'string' && afterTerm !== '') {
-      const cursor = decodeCursor(afterTerm, graphScopeHash(root.graphs))
-      transport(inner, `${e}_after`, `<${iriTermSafe(cursor.lastIRI)}>`)
-      // SPARQL's < / > are undefined for IRIs (evaluates to a type error, dropping
-      // the row) — STR() comparison is the defined, portable form.
-      inner.push(`    FILTER(STR(?${e}) > STR(?${e}_after))`)
+      const cursor = decodeCursor(afterTerm, graphScopeHash(root.graphs), orderByKey)
+      const compare = (left: string): string => {
+        // direction-aware pair resume over (lastValue, lastIRI); IRI tiebreak ASC
+        if (ordering?.direction === 'DESC') {
+          return `(STR(?${left}) < ${stringLiteralTerm(cursor.lastValue)} || (STR(?${left}) = ${stringLiteralTerm(cursor.lastValue)} && STR(?${e}) > STR(?${e}_after)))`
+        }
+        return `(STR(?${left}) > ${stringLiteralTerm(cursor.lastValue)} || (STR(?${left}) = ${stringLiteralTerm(cursor.lastValue)} && STR(?${e}) > STR(?${e}_after)))`
+      }
+      if (ordVar !== undefined) {
+        transport(inner, `${e}_after`, `<${iriTermSafe(cursor.lastIRI)}>`)
+        inner.push(`    FILTER(${compare(ordVar)})`)
+      } else {
+        // canonical IRI ordering: resume strictly after the cursor's IRI
+        transport(inner, `${e}_after`, `<${iriTermSafe(cursor.lastIRI)}>`)
+        // SPARQL's < / > are undefined for IRIs (a type error drops the row) —
+        // STR() comparison is the defined, portable form.
+        inner.push(`    FILTER(STR(?${e}) > STR(?${e}_after))`)
+      }
+    }
+    // equality filters (docs/06): lexical STR() equality, GRAPH-scoped like every
+    // pattern (D10). Transport (c): the value rides as an INLINED, guarded
+    // string-literal TERM — nested FILTER-inside-EXISTS does not reliably see
+    // VALUES-scoped variables across engines (live parity caught it on Oxigraph
+    // 0.5); a term position is not an interpolation surface (docs/07 T1), and
+    // the guard refuses control characters + escapes quotes/backslashes.
+    for (let i = 0; i < (root.eqFilters ?? []).length; i += 1) {
+      const filter = root.eqFilters![i]!
+      const value = String(resolveBinding(filter.binding, variables, `${root.rootField}(${filter.argName}: …)`) ?? '')
+      const fv = `${e}_filter${i}`
+      void fv
+      inner.push(`    FILTER(EXISTS { GRAPH <${scope}> { ?${e} <${filter.path}> ?${e}_filter${i}_v . FILTER(STR(?${e}_filter${i}_v) = ${stringLiteralTerm(value)}) } })`)
     }
     // entity gates live INSIDE the window sub-select: gated entities leave the
     // population before LIMIT — counts/cursors/hasNextPage see visible only.
     // The principal binds here because the gate references it in this scope.
     if (security !== undefined) bindPrincipal(inner)
     for (const gate of rootGates) inner.push(`    ${gate}`)
+    const projectedInner = ordVar !== undefined ? `SELECT ?${e} ?${ordVar}` : `SELECT ?${e}`
+    const orderByLine =
+      ordVar !== undefined && ordering?.direction === 'DESC'
+        ? `ORDER BY DESC(?${ordVar}) ?${e}`
+        : ordVar !== undefined
+          ? `ORDER BY ?${ordVar} ?${e}`
+          : `ORDER BY ?${e}`
     where.push(
-      `  { SELECT ?${e}`,
+      `  { ${projectedInner}`,
       '  WHERE {',
       ...inner,
       '  }',
-      `  ORDER BY ?${e}`,
+      `  ${orderByLine}`,
       `  LIMIT ${pageSize(root, variables) + 1} }`,
       `  GRAPH <${scope}> {`,
       ...expansions,
       '  }',
     )
+    // project the ordinate so assembly can mint pair-parity cursors
+    if (ordVar !== undefined) selected.push(ordVar)
     // field-level gates in the expansions reference the principal too — bind the
     // outer scope when any gate will look it up there
     if (security !== undefined && projectedFieldsHaveGates(projected)) {
@@ -211,10 +257,19 @@ export function projectRoot(
     }
   }
 
-  // Scan roots: outer ORDER BY makes row order deterministic — engines are not
-  // required to propagate a sub-SELECT's ordering through an outer join, and the
-  // assembly depends on result order for canonical windows (D6).
-  const outerOrderBy = root.mode === 'scan' ? `ORDER BY ?${e}\n` : ''
+  // Scan roots: outer ORDER BY makes row order deterministic AND must mirror the
+  // active ordering — engines do not propagate a sub-SELECT's order through an
+  // outer join, and the assembly's page slice depends on result order (D6).
+  // Outer IRI sorting of an ordered window was a live-parity catch.
+  let outerOrderBy = ''
+  if (root.mode === 'scan') {
+    const ord = root.ordering?.path !== undefined ? `${e}_ord` : undefined
+    if (ord !== undefined) {
+      outerOrderBy = `${root.ordering?.direction === 'DESC' ? `ORDER BY DESC(?${ord}) ?${e}` : `ORDER BY ?${ord} ?${e}`}\n`
+    } else {
+      outerOrderBy = `ORDER BY ?${e}\n`
+    }
+  }
   const query = `SELECT DISTINCT ${selected.map((v) => `?${v}`).join(' ')}\nWHERE {\n${where.join('\n')}\n}\n${outerOrderBy}`
   return { query, bindings }
 }
@@ -509,6 +564,11 @@ function assembleScan(
   const hasNext = order.length > size
   const graphHash = graphScopeHash(root.graphs)
 
+  // cursor parity with the reference adapter: same orderByKey, same ordinate
+  const orderByKey = root.ordering?.orderByKey ?? ORDER_BY_IRI
+  const ordVar = `${projected.entityVar}_ord`
+  const ordinateOf = (iri: string, row: Row): string =>
+    root.ordering?.path !== undefined ? row[ordVar]?.value ?? iri : iri
   const result: Record<string, unknown> = {}
   if (root.connectionShaping?.edges) {
     result['edges'] = page.map((iri) => ({
@@ -518,7 +578,7 @@ function assembleScan(
         security,
         errors,
       ),
-      cursor: encodeCursor({ orderByKey: ORDER_BY_IRI, lastValue: iri, lastIRI: iri, graphHash }),
+      cursor: encodeCursor({ orderByKey, lastValue: ordinateOf(iri, rows.results.bindings.find((r) => r[projected.entityVar]?.value === iri) ?? {} as Row), lastIRI: iri, graphHash }),
     }))
   }
   if (root.connectionShaping?.pageInfo) {
@@ -528,8 +588,8 @@ function assembleScan(
         page.length === 0
           ? null
           : encodeCursor({
-              orderByKey: ORDER_BY_IRI,
-              lastValue: page[page.length - 1]!,
+              orderByKey,
+              lastValue: ordinateOf(page[page.length - 1]!, rows.results.bindings.find((r) => r[projected.entityVar]?.value === page[page.length - 1]) ?? ({} as Row)),
               lastIRI: page[page.length - 1]!,
               graphHash,
             }),
