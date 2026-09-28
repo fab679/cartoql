@@ -6,6 +6,11 @@
  *   --shapes   FILE   required. SHACL node shapes (.ttl)
  *   --data     FILE   reference mode: in-memory store over this .ttl
  *   --sparql   URL    SPARQL 1.1 query endpoint (protocol/VALUES transports auto-selected)
+ *   --stamps  FILE  security stamps config (docs/03 — @requireGroup rules);
+ *                    without it the module is unstamped (open by module)
+ *   --auth-file FILE static claims fixture: {"alice": ["hr-comp","legal"]}
+ *                     (absent → documented open posture, no security claims)
+ *   --acl-graph IRI  ACL graph scope for stamped modules (store-side gates)
  *   --graph    IRI    dataset graph scope (D10 — e.g. urn:verax:shard:core).
  *                     Default: urn:verax:dataset:default. The store must hold
  *                     the data in this named graph in SPARQL mode.
@@ -32,6 +37,9 @@ const gateway = startGateway({
   dataFile: flag('data'),
   sparqlEndpoint: flag('sparql'),
   graphFlag: flag('graph'),
+  authFile: flag('auth-file'),
+  aclGraph: flag('acl-graph'),
+  stampsFile: flag('stamps'),
   port,
 })
 

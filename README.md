@@ -86,7 +86,18 @@ npm run serve -- \
 
 Oxigraph (and any store that ignores SPARQL protocol variable bindings) is
 handled by the adapter's auto-selected VALUES transport — never by weakening
-the no-interpolation rule. The M2 security kernel has begun: SHACL shape + stamp configurations generate
+the no-interpolation rule. The gateway now serves the security path end to end — one flag set:
+
+```bash
+npm run serve -- \
+  --ontology sec/ontology.ttl --shapes sec/shapes.ttl --data sec/data.ttl \
+  --graph urn:verax:shard:sec \
+  --stamps sec/stamps.json          # @requireGroup rules (docs/03 stamping)\
+  --auth-file claims.json           # {"alice": ["hr-comp","legal"]}
+# principal per request: header  x-verax-principal: alice
+```
+
+The M2 security kernel has begun: SHACL shape + stamp configurations generate
 `@requireGroup` directives; the compiler translates them into plan-level
 constraints, and the adapter enforces the spec's two-track semantics (docs/03) —
 field denial is visible (`null` + `VX_PERMISSION_DENIED`), entity gating is

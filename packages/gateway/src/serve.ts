@@ -22,7 +22,13 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { buildSchema, parse, validate } from 'graphql'
 import { generateSdl } from '../../generator/src/index.js'
 import { compileDocument, CompilerError, type VeraxModule } from '../../core/src/compiler.js'
-import { ExecutorError, type ResponseData } from '../../core/src/executor.js'
+import { ExecutorError, type ResponseData, type SecurityContext } from '../../core/src/executor.js'
+import {
+  OpenResolver,
+  resolveView,
+  StaticResolver,
+  type PermissionResolver,
+} from '../../core/src/security.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
@@ -37,6 +43,19 @@ export interface ServeOptions {
   datasetGraphs?: readonly string[]
   /** CLI convenience: single --graph IRI fills datasetGraphs. */
   graphFlag?: string
+  /**
+   * Static claims file (docs/04 Path 2): `{ "alice": ["hr-comp", "legal"] }`.
+   * Absent → OpenResolver: the documented no-security posture; health says so.
+   */
+  authFile?: string
+  /** ACL graph scope for store-side enforcement of stamped modules (M2 slice 2). */
+  aclGraph?: string
+  /**
+   * Stamps file (docs/03: generator-stamped security): the module is only
+   * security-relevant if its stamps were part of generation. Without this the
+   * gateway serves an unstamped schema — open by module, not by accident.
+   */
+  stampsFile?: string
 }
 
 export interface RunningGateway {
@@ -59,28 +78,40 @@ export function startGateway(options: ServeOptions): RunningGateway {
   const generated = generateSdl(
     { ontology, shapes },
     options.moduleId ?? 'module',
-    datasetGraphs ? { datasetGraphs } : {},
+    {
+      ...(datasetGraphs ? { datasetGraphs } : {}),
+      ...(options.stampsFile
+        ? { stamps: JSON.parse(readFileSync(options.stampsFile, 'utf-8')) as never }
+        : {}),
+    },
   )
+
+  // Auth posture (docs/04 Path 2): static fixture for tests/demos; oidc/jwt
+  // providers slot behind the same PermissionResolver SPI.
+  const resolver: PermissionResolver = options.authFile
+    ? new StaticResolver(JSON.parse(readFileSync(options.authFile, 'utf-8')) as Record<string, string[]>)
+    : new OpenResolver()
   const module: VeraxModule = {
     moduleId: generated.moduleId,
     schemaHash: generated.schemaHash,
     schema: buildSchema(generated.sdl),
     semanticMap: generated.semanticMap,
     datasetGraphs: generated.datasetGraphs,
+    aclGraph: options.aclGraph,
   }
 
   let adapterName: string
-  let run: (plan: ReturnType<typeof compileDocument>, vars: Record<string, string | number | boolean | null>) => ResponseData | Promise<ResponseData>
+  let run: (plan: ReturnType<typeof compileDocument>, vars: Record<string, string | number | boolean | null>, security: SecurityContext) => ResponseData | Promise<ResponseData>
   if (options.dataFile) {
     const adapter = ReferenceAdapter.fromTurtle(readFileSync(options.dataFile, 'utf-8'), module.datasetGraphs)
     adapterName = `reference (${options.dataFile})`
-    run = (plan, vars) => adapter.run(plan, module, vars)
+    run = (plan, vars, security) => adapter.run(plan, module, vars, security)
   } else {
     // SPARQL mode: live since the parity suite — protocol/VALUES transports are
     // auto-selected against the endpoint (docs/09 L0 parity, live-tested on Oxigraph).
     const adapter = new SparqlHttpAdapter({ endpoint: options.sparqlEndpoint! })
     adapterName = `sparql-http (${options.sparqlEndpoint})`
-    run = (plan, vars) => adapter.run(plan, module, vars)
+    run = (plan, vars, security) => adapter.run(plan, module, vars, security)
   }
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -95,11 +126,14 @@ export function startGateway(options: ServeOptions): RunningGateway {
 
     try {
       if (req.method === 'GET' && req.url === '/health') {
+        // docs/10: operators must never discover security posture by accident
         return send(200, {
           status: 'ok',
           adapter: adapterName,
           moduleId: module.moduleId,
           schemaHash: module.schemaHash,
+          auth: resolver.provider,
+          aclGraph: module.aclGraph ?? null,
           provenance: 'off (M3)',
         })
       }
@@ -126,7 +160,13 @@ export function startGateway(options: ServeOptions): RunningGateway {
           return send(400, { errors: validationErrors.map((e) => ({ message: e.message })) })
         }
         const plan = compileDocument(parsed.query, module)
-        const response = await run(plan, variables)
+        // agents run as the human: the principal is per-request (header), the
+        // view resolves once per request and failures collapse fail-closed
+        const principalId = typeof req.headers['x-verax-principal'] === 'string'
+          ? (req.headers['x-verax-principal'] as string)
+          : 'anonymous'
+        const view = await resolveView(resolver, { principalId })
+        const response = await run(plan, variables, { view, principalId })
         return send(200, response)
       }
       return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /playground, GET /health' }] })
