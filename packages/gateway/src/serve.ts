@@ -1,0 +1,198 @@
+/**
+ * @verax/gateway — `serve`: the HTTP surface (docs/04 Path 1).
+ *
+ * v0 runtime modes:
+ *  - `--data file.ttl` → reference adapter (in-memory store) — the zero-store
+ *    quickstart path; fully green end to end
+ *  - `--sparql URL` → SPARQL 1.1 HTTP adapter — projection ships (slice 4);
+ *    HTTP execution + response assembly are the next slice, so this mode
+ *    refuses honestly with a clear error instead of pretending
+ *
+ * Endpoints:
+ *  - POST /graphql      { query, variables } → compile+execute, { data, errors }
+ *  - GET  /playground   minimal HTML console (no build step, no CDN deps)
+ *  - GET  /health       operator posture: adapter, schema hash, SDL version
+ *
+ * v0 errors carry `extensions.name` (CompilerError/ExecutorError); the typed
+ * `VX_*` error-code surface (docs/03 Part II) lands with M2's directive pass —
+ * the gateway never invents codes before the contract does.
+ */
+import { readFileSync } from 'node:fs'
+import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
+import { buildSchema, parse, validate } from 'graphql'
+import { generateSdl } from '../../generator/src/index.js'
+import { compileDocument, CompilerError, type VeraxModule } from '../../core/src/compiler.js'
+import { ExecutorError } from '../../core/src/executor.js'
+import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
+
+export interface ServeOptions {
+  ontologyFile: string
+  shapesFile: string
+  dataFile?: string
+  sparqlEndpoint?: string
+  port?: number
+  moduleId?: string
+}
+
+export interface RunningGateway {
+  readonly server: Server
+  readonly url: string
+  readonly close: () => Promise<void>
+}
+
+export function startGateway(options: ServeOptions): RunningGateway {
+  if (options.sparqlEndpoint && options.dataFile) {
+    throw new Error('pass either --sparql or --data, not both')
+  }
+  if (!options.sparqlEndpoint && !options.dataFile) {
+    throw new Error('no store configured: pass --data file.ttl (reference mode) or --sparql URL (once landing)')
+  }
+
+  const ontology = readFileSync(options.ontologyFile, 'utf-8')
+  const shapes = readFileSync(options.shapesFile, 'utf-8')
+  const generated = generateSdl(
+    { ontology, shapes },
+    options.moduleId ?? 'module',
+  )
+  const module: VeraxModule = {
+    moduleId: generated.moduleId,
+    schemaHash: generated.schemaHash,
+    schema: buildSchema(generated.sdl),
+    semanticMap: generated.semanticMap,
+    datasetGraphs: generated.datasetGraphs,
+  }
+
+  let adapterName: string
+  let run: (plan: ReturnType<typeof compileDocument>, vars: Record<string, string | number | boolean | null>) => Promise<{ data: Record<string, unknown>; errors: readonly never[] }>
+  if (options.dataFile) {
+    const adapter = ReferenceAdapter.fromTurtle(readFileSync(options.dataFile, 'utf-8'), module.datasetGraphs)
+    adapterName = `reference (${options.dataFile})`
+    run = (plan, vars) => adapter.run(plan, module, vars)
+  } else {
+    // Honest refusal until slice 5's executor ships — see module doc.
+    throw new Error(
+      `--sparql is wired for projection only so far; SPARQL 1.1 HTTP execution lands with the next slice. ` +
+        `Run with --data file.ttl (reference mode) in the meantime.`,
+    )
+  }
+
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    void handle(req, res)
+  })
+
+  async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const send = (status: number, body: unknown, contentType = 'application/json'): void => {
+      res.writeHead(status, { 'content-type': contentType })
+      res.end(typeof body === 'string' ? body : JSON.stringify(body))
+    }
+
+    try {
+      if (req.method === 'GET' && req.url === '/health') {
+        return send(200, {
+          status: 'ok',
+          adapter: adapterName,
+          moduleId: module.moduleId,
+          schemaHash: module.schemaHash,
+          provenance: 'off (M3)',
+        })
+      }
+      if (req.method === 'GET' && (req.url === '/playground' || req.url === '/')) {
+        return send(200, playgroundHtml(), 'text/html; charset=utf-8')
+      }
+      if (req.method === 'POST' && req.url === '/graphql') {
+        const body = await readBody(req)
+        let parsed: { query?: unknown; variables?: unknown }
+        try {
+          parsed = JSON.parse(body) as typeof parsed
+        } catch {
+          return send(400, { errors: [{ message: 'request body must be JSON' }] })
+        }
+        if (typeof parsed.query !== 'string') {
+          return send(400, { errors: [{ message: 'missing "query" string in request body' }] })
+        }
+        const variables = normalizeVariables(parsed.variables)
+
+        // Schema validation first (docs/02 gateway step 1–2); then the compile.
+        const document = parse(parsed.query)
+        const validationErrors = validate(module.schema, document)
+        if (validationErrors.length > 0) {
+          return send(400, { errors: validationErrors.map((e) => ({ message: e.message })) })
+        }
+        const plan = compileDocument(parsed.query, module)
+        const response = await run(plan, variables)
+        return send(200, response)
+      }
+      return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /playground, GET /health' }] })
+    } catch (err) {
+      if (err instanceof CompilerError || err instanceof ExecutorError) {
+        return send(400, { errors: [{ message: err.message, extensions: { name: err.name } }] })
+      }
+      const message = err instanceof Error ? err.message : 'unknown error'
+      return send(500, { errors: [{ message }] })
+    }
+  }
+
+  const port = options.port ?? 0
+  return {
+    server,
+    get url() {
+      const addr = server.address()
+      return typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : ''
+    },
+    close: () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()))
+      }),
+  }
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c: Buffer) => chunks.push(c))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+    req.on('error', reject)
+  })
+}
+
+function normalizeVariables(raw: unknown): Record<string, string | number | boolean | null> {
+  if (raw === undefined || raw === null) return {}
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new CompilerError('"variables" must be a JSON object of scalars')
+  }
+  const out: Record<string, string | number | boolean | null> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    const t = typeof value
+    if (value === null || t === 'string' || t === 'number' || t === 'boolean') {
+      out[key] = value
+    } else {
+      throw new CompilerError(`variable $${key} has non-scalar type (${t}) — v0 accepts scalars only`)
+    }
+  }
+  return out
+}
+
+function playgroundHtml(): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>verax playground</title>
+<style>body{font-family:ui-monospace,monospace;max-width:820px;margin:2rem auto;padding:0 1rem}
+textarea{width:100%;height:11rem}pre{background:#111;color:#eee;padding:1rem;overflow:auto}</style>
+</head><body><h1>verax playground</h1>
+<p>POST a GraphQL query with variables (scalars only) to <code>/graphql</code>.</p>
+<p><label>variables (JSON):</label><br><input id="vars" size="60" value='{"iri": "…"}' /></p>
+<p><textarea id="q"></textarea></p>
+<p><button onclick="go()">run</button></p>
+<pre id="out">—</pre>
+<script>
+async function go(){
+  const out = document.getElementById('out')
+  try {
+    const variables = JSON.parse(document.getElementById('vars').value || '{}')
+    const r = await fetch('/graphql', {method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({query: document.getElementById('q').value, variables})})
+    out.textContent = JSON.stringify(await r.json(), null, 2)
+  } catch(e){ out.textContent = String(e) }
+}
+</script></body></html>
+`
+}

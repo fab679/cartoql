@@ -56,10 +56,26 @@ Verax's three commitments:
 
 ## Status
 
-Pre-alpha — specification-complete, implementation starting. See the
-[roadmap](docs/05-roadmap.md): milestone M1 is *a zero-config GraphQL endpoint over
-any SPARQL endpoint* (useful to everyone, no security required), M2 layers the
-security compilation kernel.
+Pre-alpha, first implementation slices live. The golden path is green end to end:
+SHACL shapes → generated SDL → compiled plans (ADR-1 IR) → executed responses,
+all snapshot-tested against the reviewed [corpus](corpus/TRACEABILITY.md) —
+**51 tests, 7 packages**. The gateway now serves GraphQL over your own data:
+
+```bash
+npm run serve --   --ontology corpus/shards/core/ontology.ttl   --shapes   corpus/shards/core/shapes.ttl   --data     corpus/shards/core/data.ttl   --port     4137
+# → http://localhost:4137/playground
+
+curl -s -X POST localhost:4137/graphql -H 'content-type: application/json' -d '{
+  "query": "query Q($iri: ID!) { publication(iri: $iri) { name year authoredInverse { name } } }",
+  "variables": {"iri": "https://verax.example/corpus/core/data#pub-a3"}
+}'
+# {"data":{"publication":{"name":"Plan-level authorization","year":"2025",
+#   "authoredInverse":[{"name":"Ada Ionescu"},{"name":"Cleo Marchetti"}]}},"errors":[]}
+```
+
+Remaining for M1: SPARQL 1.1 HTTP *execution* (projection already ships as reviewed,
+injection-pure snapshots) and the npm packaging for `npx verax-gateway`. M2 then
+layers the security compilation kernel. See the [roadmap](docs/05-roadmap.md).
 
 ## Documentation
 
