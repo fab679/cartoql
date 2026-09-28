@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { EditorState, type Extension } from '@codemirror/state'
-import { EditorView, keymap, lineNumbers } from '@codemirror/view'
+import { Compartment, EditorState } from '@codemirror/state'
+import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete'
 import { graphql } from 'cm6-graphql'
@@ -8,28 +8,44 @@ import { lintGutter } from '@codemirror/lint'
 import type { GraphQLSchema } from 'graphql'
 import { print, parse } from 'graphql'
 
-/** Shared ink-theme tokens for every CodeMirror surface (doc editor, variables…). */
+/** The shared ink-brass theme for every CodeMirror surface. */
 export const cmTheme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'var(--color-ink)', color: 'var(--color-paper)', fontSize: '12.5px' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.55', overflow: 'auto' },
   '.cm-content': { caretColor: 'var(--color-brass)' },
-  '.cm-gutters': { backgroundColor: 'var(--color-ink)', color: 'var(--color-paper-dim)', opacity: 0.7, border: 'none', borderRight: '1px solid var(--color-line)' },
+  '.cm-gutters': {
+    backgroundColor: 'var(--color-ink)', color: 'var(--color-paper-dim)', opacity: 0.75,
+    border: 'none', borderRight: '1px solid var(--color-line)', minWidth: '2em',
+  },
   '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--color-brass) 5%, transparent)' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-brass)' },
-  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(201,169,107,0.25)' },
-  '&.cm-focused': { outline: 'none' },
-  '.cm-tooltip': { backgroundColor: 'var(--color-ink-2)', border: '1px solid var(--color-line-2)', color: 'var(--color-paper)' },
-  '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--color-ink-3)', color: 'var(--color-brass)' },
-  '.cm-lintRange-error': { textDecoration: 'underline wavy var(--color-spec-red)' },
+  '.cm-selectionBackground': { backgroundColor: 'rgba(201,169,107,0.25)' },
+  '.cm-focused': { outline: 'none' },
+  '.cm-tooltip': {
+    backgroundColor: 'var(--color-ink-2)', border: '1px solid var(--color-line-2)', borderRadius: '2px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.4)', maxWidth: '400px', zIndex: '100',
+  },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': {
+    backgroundColor: 'var(--color-ink-3)', color: 'var(--color-brass)',
+  },
+  '.cm-tooltip-autocomplete ul li': {
+    padding: '3px 8px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+    gap: '12px', cursor: 'pointer',
+  },
+  '.cm-completionIcon': { display: 'none' },
+  '.cm-completionLabel': { color: 'var(--color-paper)', fontFamily: 'var(--font-mono)', fontSize: '11.5px' },
+  '.cm-completionDetail': {
+    color: 'var(--color-paper-dim)', fontSize: '10px', fontFamily: 'var(--font-mono)', opacity: 0.8,
+  },
 })
 
 /**
- * The editor: CodeMirror 6 + cm6-graphql (graphql-language-service — the engine
- * GraphiQL-class consoles use). Braces auto-close (the reported typing pain),
- * parse diagnostics render in-editor with line positions, completions come
- * from the same schema the rail displays. ctrl+enter runs; ctrl+shift+enter
- * prettifies (parse errors surface verbatim in the console notice, not as a
- * blunt "refused").
+ * The query console editor: CodeMirror 6 driven by cm6-graphql (the
+ * graphql-language-service engine) — schema-aware completions open on
+ * identifier prefixes and inside parens; in-editor lint marks parse errors and
+ * validation mismatches with line positions. The schema re-registers through
+ * a Compartment whenever /sdl changes, without killing undo history.
+ * ctrl+enter runs; ctrl+shift+enter prettifies.
  */
 export function QueryEditor({
   value,
@@ -46,52 +62,49 @@ export function QueryEditor({
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
+  const schemaComp = useRef(new Compartment())
 
-  // (re)build when the schema changes (schema-driven completions follow the rail)
   useEffect(() => {
     if (hostRef.current === null || viewRef.current !== null) return
-    const extensions: Extension[] = [
-      basicSetup,
-      lineNumbers(),
-      closeBrackets(),
-      autocompletion({ activateOnTyping: true }),
-      lintGutter(),
-      graphql(schema ?? undefined),
-      keymap.of([
-        {
-          key: 'Mod-Enter',
-          preventDefault: true,
-          run: () => {
-            onSubmit()
-            return true
+    const state = EditorState.create({
+      doc: value,
+      extensions: [
+        basicSetup,
+        closeBrackets(),
+        autocompletion({ activateOnTyping: true, maxRenderedOptions: 20 }),
+        lintGutter(),
+        schemaComp.current.of(schema !== null ? [graphql(schema)] : []),
+        keymap.of([
+          {
+            key: 'Mod-Enter',
+            preventDefault: true,
+            run: () => {
+              onSubmit()
+              return true
+            },
           },
-        },
-        {
-          key: 'Mod-Shift-Enter',
-          preventDefault: true,
-          run: (view) => {
-            try {
-              const text = view.state.doc.toString()
-              view.dispatch({ changes: { from: 0, to: text.length, insert: print(parse(text)) } })
-              onNotice(null)
-            } catch (error_) {
-              // parse failures carry line/column — surface them verbatim
-              onNotice(`prettify: ${(error_ as Error).message.split('\n')[0]}`)
-            }
-            return true
+          {
+            key: 'Mod-Shift-Enter',
+            preventDefault: true,
+            run: (view) => {
+              try {
+                const text = view.state.doc.toString()
+                view.dispatch({ changes: { from: 0, to: text.length, insert: print(parse(text)) } })
+                onNotice(null)
+              } catch (error_) {
+                onNotice(`prettify: ${(error_ as Error).message.split('\n').slice(0, 2).join(' ')}`)
+              }
+              return true
+            },
           },
-        },
-      ]),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) onChange(update.state.doc.toString())
-      }),
-      EditorState.allowMultipleSelections.of(true),
-      cmTheme,
-    ]
-    const view = new EditorView({
-      state: EditorState.create({ doc: value, extensions }),
-      parent: hostRef.current,
+        ]),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) onChange(update.state.doc.toString())
+        }),
+        cmTheme,
+      ],
     })
+    const view = new EditorView({ state, parent: hostRef.current })
     viewRef.current = view
     return () => {
       view.destroy()
@@ -100,14 +113,17 @@ export function QueryEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // schema (re)compartment: schema changes swap completions without killing undo
+  // swap the schema through the Compartment — working documents keep history
   useEffect(() => {
     const view = viewRef.current
-    if (view === null || schema === null) return
-    void graphql(schema) // recompose via dispatch when the schema loads later
+    const compartment = schemaComp.current
+    if (view === null || compartment === null) return
+    const newSchema = schema
+    const effective = newSchema !== null ? [graphql(newSchema)] : []
+    view.dispatch({ effects: compartment.reconfigure(effective) })
   }, [schema])
 
-  // external value changes (prettify from toolbar, presets) reflect into the doc
+  // external document changes (prettify from toolbar) sync into the doc
   useEffect(() => {
     const view = viewRef.current
     if (view === null) return
@@ -117,5 +133,11 @@ export function QueryEditor({
     }
   }, [value])
 
-  return <div ref={hostRef} className="h-full min-h-0 flex-1 overflow-hidden" aria-label="GraphQL document editor" />
+  return (
+    <div
+      ref={hostRef}
+      className="h-full min-h-0 flex-1 overflow-hidden border-t border-line bg-ink"
+      aria-label="GraphQL document editor"
+    />
+  )
 }
