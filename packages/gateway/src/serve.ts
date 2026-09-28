@@ -30,6 +30,8 @@ import {
   type PermissionResolver,
 } from '../../core/src/security.js'
 import { jwtGroupsResolver } from '../../core/src/providers.js'
+import { BudgetError, enforceBudgets, DEFAULT_BUDGETS, type BudgetLimits } from '../../core/src/budgets.js'
+import type { Plan } from '../../core/src/ir.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
@@ -61,6 +63,8 @@ export interface ServeOptions {
    * gateway serves an unstamped schema — open by module, not by accident.
    */
   stampsFile?: string
+  /** Budget gates (docs/08; threat T3's mitigation, now live): VX_QUERY_TOO_COMPLEX. */
+  budgets?: BudgetLimits
 }
 
 export interface RunningGateway {
@@ -130,6 +134,25 @@ export function startGateway(options: ServeOptions): RunningGateway {
     void handle(req, res)
   })
 
+  // Plan cache (docs/10): compile is pure (document + module), so source+schema
+  // is a sound key; size-capped with insertion-order eviction. viewVersion never
+  // keys this cache — enforcement happens at run time against the live view, so
+  // a cached plan cannot stale-serve security.
+  const planCache = new Map<string, Plan>()
+  const PLAN_CACHE_MAX = 512
+  const compileCached = (source: string): Plan => {
+    const key = `${module.schemaHash}:${source}`
+    const hit = planCache.get(key)
+    if (hit !== undefined) return hit
+    const plan = compileDocument(source, module)
+    enforceBudgets(plan, options.budgets ?? DEFAULT_BUDGETS) // reject pre-execution
+    if (planCache.size >= PLAN_CACHE_MAX) {
+      planCache.delete(planCache.keys().next().value as string)
+    }
+    planCache.set(key, plan)
+    return plan
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const send = (status: number, body: unknown, contentType = 'application/json'): void => {
       res.writeHead(status, { 'content-type': contentType })
@@ -171,7 +194,22 @@ export function startGateway(options: ServeOptions): RunningGateway {
         if (validationErrors.length > 0) {
           return send(400, { errors: validationErrors.map((e) => ({ message: e.message })) })
         }
-        const plan = compileDocument(parsed.query, module)
+        let plan: Plan
+        try {
+          plan = compileCached(parsed.query)
+        } catch (err) {
+          if (err instanceof BudgetError) {
+            // typed pre-execution rejection — the limits ride in extensions so
+            // clients can self-fix instead of guessing
+            return send(400, {
+              errors: [{
+                message: err.message,
+                extensions: { code: err.code, metric: err.metric, value: err.value, limit: err.limit },
+              }],
+            })
+          }
+          throw err
+        }
         // agents run as the human: the principal is per-request (header), the
         // view resolves once per request and failures collapse fail-closed
         const principalId = typeof req.headers['x-verax-principal'] === 'string'

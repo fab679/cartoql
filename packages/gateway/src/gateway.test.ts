@@ -94,3 +94,36 @@ describe('gateway: serve (docs/04 Path 1 quickstart)', () => {
     }
   })
 })
+
+describe('gateway: budget gate (docs/08, threat T3) — rejection is typed, pre-execution', () => {
+  it('over-budget documents get VX_QUERY_TOO_COMPLEX with the offending metric and limit', async () => {
+    const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core', budgets: { maxCost: 1 } })
+    gateway.server.listen(0)
+    try {
+      const response = await fetch(`${gateway.url}/graphql`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'query { people(first: 5) { edges { node { name worksFor { name } } } } }' }),
+      })
+      expect(response.status).toBe(400)
+      const body = (await response.json()) as { errors: Array<{ extensions?: { code?: string; metric?: string; limit?: number } }> }
+      expect(body.errors[0]?.extensions?.code).toBe('VX_QUERY_TOO_COMPLEX')
+      expect(body.errors[0]?.extensions?.metric).toBe('cost')
+      expect(body.errors[0]?.extensions?.limit).toBe(1)
+    } finally {
+      await gateway.close()
+    }
+  })
+
+  it('same-document repeat queries return identical responses (plan cache transparent)', async () => {
+    const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core' })
+    gateway.server.listen(0)
+    try {
+      const payload = JSON.stringify({ query: 'query { people(first: 2) { edges { node { name } } pageInfo { hasNextPage } } }' })
+      const ask = async () => (await (await fetch(`${gateway.url}/graphql`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: payload })).json())
+      expect(await ask()).toEqual(await ask())
+    } finally {
+      await gateway.close()
+    }
+  })
+})

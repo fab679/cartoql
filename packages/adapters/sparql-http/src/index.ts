@@ -307,18 +307,33 @@ function iriTermSafe(iri: string): string {
  * returns `x` bound; one that ignores them (e.g. Oxigraph 0.5.x) returns an
  * empty binding.
  */
-export async function probeProtocolBinding(endpoint: string): Promise<boolean> {
+export async function probeProtocolBinding(
+  endpoint: string,
+  fetcher: typeof fetch = fetch,
+  timeoutMs = 5_000,
+): Promise<boolean> {
   const params = new URLSearchParams()
   params.set('query', 'SELECT ?x WHERE {}')
   params.set('$x', '<urn:verax:protocol-binding-probe>')
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
-  if (!response.ok) return false
-  const json = (await response.json()) as SparqlRowSet
-  return json.results.bindings.some((row) => row['x'] !== undefined)
+  // a probe is a probe: it borrows the caller's fetcher and it times out — a
+  // hung endpoint must not hang capability detection (docs/08)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetcher(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+      signal: controller.signal,
+    })
+    if (!response.ok) return false
+    const json = (await response.json()) as SparqlRowSet
+    return json.results.bindings.some((row) => row['x'] !== undefined)
+  } catch {
+    return false // probe failure = can't confirm = fall back (values mode is compatible everywhere)
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +344,14 @@ export interface SparqlHttpOptions {
   /** SPARQL 1.1 query endpoint, e.g. http://localhost:7878/query */
   readonly endpoint: string
   readonly bindingMode?: BindingMode
+  /**
+   * Hard request timeout in ms for one plan execution (all roots). Default per
+   * docs/08: min(30 s, cost x 10 ms) — a cost-scaled budget, not one blunt
+   * number. A hung store hangs nothing.
+   */
+  readonly timeoutMs?: number
+  /** Injectable fetch for tests. */
+  readonly fetcher?: typeof fetch
 }
 
 type Row = Readonly<Record<string, { readonly type: string; readonly value: string }>>
@@ -345,11 +368,15 @@ export class SparqlHttpAdapter implements StoreAdapter {
   readonly name = 'sparql-http'
   readonly conformance = 'L0' as const
   readonly #endpoint: string
+  readonly #timeoutMs?: number
+  readonly #fetcher: typeof fetch
   #mode: BindingMode
 
   constructor(options: SparqlHttpOptions) {
     this.#endpoint = options.endpoint
     this.#mode = options.bindingMode ?? 'auto'
+    this.#timeoutMs = options.timeoutMs
+    this.#fetcher = options.fetcher ?? fetch
   }
 
   async run(
@@ -380,15 +407,15 @@ export class SparqlHttpAdapter implements StoreAdapter {
       )
     }
     if (this.#mode === 'auto') {
-      try {
-        this.#mode = (await probeProtocolBinding(this.#endpoint)) ? 'protocol' : 'values'
-      } catch (err) {
-        throw new ExecutorError(`cannot reach SPARQL endpoint ${this.#endpoint}: ${(err as Error).message}`)
-      }
+      // probe failure = VALUES fallback (compatible everywhere), NOT a refusal:
+      // an unreachable endpoint will fail on the real request with the real error
+      this.#mode = (await probeProtocolBinding(this.#endpoint, this.#fetcher, this.#timeoutMs ?? 5_000)) ? 'protocol' : 'values'
     }
 
     const errors: VeraxError[] = []
     const data: Record<string, unknown> = {}
+    // docs/08 default: min(30 s, cost x 10 ms); explicit timeoutMs overrides
+    const timeoutMs = this.#timeoutMs ?? Math.min(30_000, Math.max(50, plan.cost * 10))
     for (const [index, root] of plan.roots.entries()) {
       if (root.kind !== 'EntityLookup') {
         throw new ExecutorError(`sparql-http adapter v0 only accepts EntityLookup roots, got ${root.kind}`)
@@ -400,7 +427,7 @@ export class SparqlHttpAdapter implements StoreAdapter {
         this.#mode === 'protocol' ? 'protocol' : 'values',
         securityProjection,
       )
-      const rows = await this.#execute(request)
+      const rows = await this.#execute(request, timeoutMs)
       const projected = projectVars(root, index)
       data[root.rootField] =
         root.mode === 'single'
@@ -410,17 +437,32 @@ export class SparqlHttpAdapter implements StoreAdapter {
     return { data, errors }
   }
 
-  async #execute(request: SparqlRequest): Promise<SparqlRowSet> {
+  async #execute(request: SparqlRequest, timeoutMs: number): Promise<SparqlRowSet> {
     const params = new URLSearchParams()
     params.set('query', request.query)
     for (const [name, term] of Object.entries(request.bindings)) {
       params.set(`$${name}`, term)
     }
-    const response = await fetch(this.#endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    })
+    // docs/08: a hung store hangs nothing — AbortController + a cost-scaled budget
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    let response: Response
+    try {
+      response = await this.#fetcher(this.#endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      throw new ExecutorError(
+        controller.signal.aborted
+          ? `SPARQL request exceeded its ${timeoutMs}ms budget (cost-scaled, docs/08) — aborted, plan not partially answered`
+          : `SPARQL request failed: ${(err as Error).message}`,
+      )
+    } finally {
+      clearTimeout(timer)
+    }
     if (!response.ok) {
       const body = (await response.text()).slice(0, 500)
       throw new ExecutorError(`SPARQL endpoint returned ${response.status}: ${body}`)

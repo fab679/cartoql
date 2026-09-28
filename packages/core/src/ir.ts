@@ -110,6 +110,26 @@ export function expansionDepth(node: FieldExpansion): number {
   return 1 + Math.max(...kids.map(expansionDepth))
 }
 
+/** Total algebra nodes in a plan (docs/08 resource-protection input). */
+export function planNodeCount(plan: Plan): number {
+  let count = 0
+  const visit = (node: AlgebraNode): void => {
+    count += 1
+    for (const child of node.children) visit(child)
+  }
+  for (const root of plan.roots) visit(root)
+  return count
+}
+
+/** Maximum expansion depth (docs/08 @maxDepth input): 1 for a flat entity. */
+export function planDepth(plan: Plan): number {
+  let max = 0
+  for (const root of plan.roots) {
+    max = Math.max(max, 1 + compoundingBelow(root))
+  }
+  return max
+}
+
 /**
  * The deepest expansion chain strictly *below* a node (0 for a leaf root) —
  * the "hopsBelow" input of the cost model's compounding term (docs/08).

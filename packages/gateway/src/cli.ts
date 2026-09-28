@@ -43,6 +43,10 @@ const gateway = startGateway({
   jwtGroupsClaim: flag('jwt-groups-claim'),
   aclGraph: flag('acl-graph'),
   stampsFile: flag('stamps'),
+  budgets: {
+    ...(flag('max-cost') ? { maxCost: Number.parseInt(flag('max-cost')!, 10) } : {}),
+    ...(flag('max-depth') ? { maxDepth: Number.parseInt(flag('max-depth')!, 10) } : {}),
+  },
   port,
 })
 
