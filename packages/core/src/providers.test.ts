@@ -76,11 +76,11 @@ describe('oidc-introspect provider', () => {
       })
       return new Response(JSON.stringify({ active: true, sub: 'frank', groups: ['legal'], iat: 1759100000 }), { status: 200 })
     }) as unknown as typeof fetch
-    const resolver = oidcIntrospectResolver({ endpoint: 'https://idp.example/introspect', clientId: 'verax', clientSecret: 's3cret', fetcher })
+    const resolver = oidcIntrospectResolver({ endpoint: 'https://idp.example/introspect', clientId: 'cartoql', clientSecret: 's3cret', fetcher })
     const view = await resolver.resolve(principal('some-token'))
     expect(view.groups).toEqual(new Set(['legal']))
     expect(view.viewVersion).toBe('oidc-1759100000')
-    expect(calls[0]?.headers['authorization']).toBe(`Basic ${Buffer.from('verax:s3cret').toString('base64')}`)
+    expect(calls[0]?.headers['authorization']).toBe(`Basic ${Buffer.from('cartoql:s3cret').toString('base64')}`)
     expect(calls[0]?.body).toContain('token=some-token')
   })
 
@@ -89,7 +89,7 @@ describe('oidc-introspect provider', () => {
     const view = await resolver.resolve(principal('revoked-token'))
     expect(view.groups.size).toBe(0)
     // deny-all still evaluates constraints through the same choke point
-    expect((await import('./security.js')).evaluateConstraint('group:legal', view)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    expect((await import('./security.js')).evaluateConstraint('group:legal', view)).toEqual({ visible: false, code: 'CQL_PERMISSION_DENIED' })
   })
 
   it('fails closed on HTTP errors and malformed verdicts', async () => {

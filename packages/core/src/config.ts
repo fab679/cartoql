@@ -1,12 +1,12 @@
 /**
- * @verax/core — the verax.json contract (docs/10): "no behavior that isn't in
+ * @cartoql/core — the cartoql.json contract (docs/10): "no behavior that isn't in
  * config or SDL — no hidden env-var semantics; operator surprises are support
  * debt." The schema file sits beside this loader for editor support; loading
  * shifts the fail-loud boundary from runtime to boot: an invalid config refuses
  * to start rather than partially applying.
  */
 
-export interface VeraxConfig {
+export interface CartoQLConfig {
   readonly modules?: ReadonlyArray<{
     readonly prefix?: string
     readonly shapes?: string
@@ -35,13 +35,13 @@ const KNOWN_TOP_LEVEL = ['modules', 'security', 'federation', 'budgets', 'cachin
 
 export class ConfigError extends Error {
   constructor(message: string) {
-    super(`[@verax/config] ${message}`)
+    super(`[@cartoql/config] ${message}`)
     this.name = 'ConfigError'
   }
 }
 
-/** Parse + validate verax.json text: unknown sections/keys refuse loudly. */
-export function loadConfig(text: string): VeraxConfig {
+/** Parse + validate cartoql.json text: unknown sections/keys refuse loudly. */
+export function loadConfig(text: string): CartoQLConfig {
   let parsed: unknown
   try {
     parsed = JSON.parse(text)
@@ -56,7 +56,7 @@ export function loadConfig(text: string): VeraxConfig {
     if (!(KNOWN_TOP_LEVEL as readonly string[]).includes(key)) {
       throw new ConfigError(
         `unknown config section "${key}" — known sections: ${KNOWN_TOP_LEVEL.join(', ')}; ` +
-          `verax.json is versioned JSON-schema'd, not a grab bag`,
+          `cartoql.json is versioned JSON-schema'd, not a grab bag`,
       )
     }
   }
@@ -69,5 +69,5 @@ export function loadConfig(text: string): VeraxConfig {
       if (typeof budgets[key] !== 'number') throw new ConfigError(`budgets.${key} must be a number`)
     }
   }
-  return config as VeraxConfig
+  return config as CartoQLConfig
 }

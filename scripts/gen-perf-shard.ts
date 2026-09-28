@@ -7,7 +7,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const OUT = process.argv[2] ?? '/tmp/verax-perf-shard'
+const OUT = process.argv[2] ?? '/tmp/cartoql-perf-shard'
 mkdirSync(OUT, { recursive: true })
 
 // deterministic "rng"
@@ -22,8 +22,8 @@ const PERSONS = 20000 // ~250k triples at the core vocabulary (docs/08 perf shar
 const PUBS = 40000
 
 const lines: string[] = []
-lines.push('@prefix vcore: <https://verax.example/corpus/core#> .')
-lines.push('@prefix vdata: <https://verax.example/corpus/core/data#> .')
+lines.push('@prefix vcore: <https://cartoql.example/corpus/core#> .')
+lines.push('@prefix vdata: <https://cartoql.example/corpus/core/data#> .')
 lines.push('@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .')
 
 for (let i = 0; i < ORGS; i += 1) {

@@ -1,4 +1,4 @@
-# @verax/generated — module: corpus/shards/sec
+# @cartoql/generated — module: corpus/shards/sec
 # Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
 # Security-stamped module: directives below are generator-originated (docs/03 rule 1).
 directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT
@@ -7,13 +7,13 @@ directive @requireRole(role: String!) on FIELD_DEFINITION | OBJECT
 directive @hiddenUnless(group: String!) on FIELD_DEFINITION
 
 
-scalar VeraxDecimal
+scalar CartoQLDecimal
 
 type Organization {
   auditNote: String @requireRole(role: "reviewer")
   name: String!
   noteOfInverse: [SensitiveNote!] @traversalScope(group: "hr-comp")
-  salaryBudget: VeraxDecimal @requireGroup(group: "hr-comp")
+  salaryBudget: CartoQLDecimal @requireGroup(group: "hr-comp")
 }
 type OrganizationConnection {
   edges: [OrganizationEdge!]!

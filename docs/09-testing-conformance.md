@@ -1,6 +1,6 @@
 # 09 — Testing & Conformance
 
-Verax's claims live or die on two test families: the **fixture corpus** (correctness
+CartoQL's claims live or die on two test families: the **fixture corpus** (correctness
 and portability) and the **leak-probe corpus** (security). Everything else — fuzzing,
 property tests, performance runs — hangs off those. This document defines both, plus
 the **adapter conformance levels** that make "works with your store" a meaningful
@@ -52,8 +52,8 @@ leakprobes/
   traversal/         entity reachable only via hidden edges — must not materialize
   cache/             same document, overlapping-but-different principals → zero plan/result reuse (T5)
   injection/         adversarial argument data through the compiler (T1)
-  directive-forgery/ client-supplied registry directives → VX_DIRECTIVE_REJECTED (T4)
-  cost/              complexity attacks → VX_QUERY_TOO_COMPLEX, pre-execution (T3)
+  directive-forgery/ client-supplied registry directives → CQL_DIRECTIVE_REJECTED (T4)
+  cost/              complexity attacks → CQL_QUERY_TOO_COMPLEX, pre-execution (T3)
 ```
 
 Rules:
@@ -79,7 +79,7 @@ Rules:
 
 ## Adapter conformance levels
 
-What "Verax-compatible with store X" means — printed by `verax doctor` per adapter:
+What "CartoQL-compatible with store X" means — printed by `cartoql doctor` per adapter:
 
 | Level | Requires |
 |---|---|
@@ -96,11 +96,11 @@ needs a documented test run.
 CLI surface used by both CI and adopters:
 
 ```
-verax testkit corpus run [--adapter <name>] [--shards …]
-verax testkit leakprobes run [--adapter <name>]
-verax testkit fixtures emit --from-shapes <…>       # generated permission fixtures for embedders (04)
-verax testkit doctor --adapter <name>              # conformance level report
-verax testkit perf run --band reference            # perf regression band vs last tag
+cartoql testkit corpus run [--adapter <name>] [--shards …]
+cartoql testkit leakprobes run [--adapter <name>]
+cartoql testkit fixtures emit --from-shapes <…>       # generated permission fixtures for embedders (04)
+cartoql testkit doctor --adapter <name>              # conformance level report
+cartoql testkit perf run --band reference            # perf regression band vs last tag
 ```
 
 ## Performance test gates (shared with [08](08-performance-engineering.md))

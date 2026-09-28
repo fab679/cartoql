@@ -19,7 +19,7 @@ const shapes = readFileSync(join(shard, 'shapes.ttl'), 'utf-8')
 const data = readFileSync(join(shard, 'data.ttl'), 'utf-8')
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/typing', {
-  datasetGraphs: ['urn:verax:shard:typing'],
+  datasetGraphs: ['urn:cartoql:shard:typing'],
 })
 writeFileSync(join(shard, 'expected/sdl/typing.graphql'), generated.sdl)
 const module_ = {

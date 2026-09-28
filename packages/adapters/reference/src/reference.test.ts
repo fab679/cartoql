@@ -21,7 +21,7 @@ const shapes = readFileSync(join(shardRoot, 'shapes.ttl'), 'utf-8')
 const data = readFileSync(join(shardRoot, 'data.ttl'), 'utf-8')
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core', {
-  datasetGraphs: ['urn:verax:shard:core'],
+  datasetGraphs: ['urn:cartoql:shard:core'],
 })
 const module_ = {
   moduleId: generated.moduleId,
@@ -68,9 +68,9 @@ describe('reference adapter: pagination contract (docs/06 D2/D6)', () => {
   it('rejects cursors minted against a different graph scope', async () => {
     const foreign = encodeCursor({
       orderByKey: ORDER_BY_IRI,
-      lastValue: 'https://verax.example/x#p',
-      lastIRI: 'https://verax.example/x#p',
-      graphHash: graphScopeHash(['urn:verax:some-other-graph']),
+      lastValue: 'https://cartoql.example/x#p',
+      lastIRI: 'https://cartoql.example/x#p',
+      graphHash: graphScopeHash(['urn:cartoql:some-other-graph']),
     })
     await expect(
       adapter.run(compileDocument(pageQuery, module_), module_, { first: 2, after: foreign }),
@@ -80,7 +80,7 @@ describe('reference adapter: pagination contract (docs/06 D2/D6)', () => {
 
 describe('reference adapter: runtime honesty', () => {
   it('absent entities resolve null with zero error entries (absence and invisibility share a shape)', async () => {
-    const res = await runDoc('person-detail.graphql', { iri: 'https://verax.example/corpus/core/data#does-not-exist' })
+    const res = await runDoc('person-detail.graphql', { iri: 'https://cartoql.example/corpus/core/data#does-not-exist' })
     expect(res.data['person']).toBeNull()
     expect(res.errors).toHaveLength(0)
   })
@@ -97,8 +97,8 @@ describe('reference adapter: runtime honesty', () => {
   })
 
   it('fails loud when the plan graph scope does not match the adapter scope (D10)', async () => {
-    const foreignAdapter = ReferenceAdapter.fromTurtle(data, ['urn:verax:shard:other'])
-    await expect(foreignAdapter.run(compileDocument(readFileSync(join(shardRoot, 'documents/person-detail.graphql'), 'utf-8'), module_), module_, { iri: 'https://verax.example/corpus/core/data#person-ada' })).rejects.toThrow(/graph scope/)
+    const foreignAdapter = ReferenceAdapter.fromTurtle(data, ['urn:cartoql:shard:other'])
+    await expect(foreignAdapter.run(compileDocument(readFileSync(join(shardRoot, 'documents/person-detail.graphql'), 'utf-8'), module_), module_, { iri: 'https://cartoql.example/corpus/core/data#person-ada' })).rejects.toThrow(/graph scope/)
   })
 })
 
@@ -108,11 +108,11 @@ describe('reference adapter: D1 blank nodes never materialize (docs/06)', () => 
   it('blank-node entities leave scans and class fields alike (fixture in data.ttl)', async () => {
     // Emi authored a blank-node publication — the fixture data carries it; the
     // query must NOT see it (existential safety, not filtering).
-    const res = await runDoc('person-detail.graphql', { iri: 'https://verax.example/corpus/core/data#person-emi' })
+    const res = await runDoc('person-detail.graphql', { iri: 'https://cartoql.example/corpus/core/data#person-emi' })
     // person-detail selects name/worksFor; assert via a dedicated plan for Emi's authored list
     const source = 'query E($iri: ID!) { person(iri: $iri) { authored { name } } }'
     const plan = compileDocument(source, module_)
-    const authored = await adapter.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#person-emi' })
+    const authored = await adapter.run(plan, module_, { iri: 'https://cartoql.example/corpus/core/data#person-emi' })
     expect((authored.data['person'] as { authored: unknown[] }).authored).toEqual([])
     void res
   })

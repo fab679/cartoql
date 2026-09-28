@@ -30,7 +30,7 @@ describe('gateway: serve (docs/04 Path 1 quickstart)', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { iri: 'https://verax.example/corpus/core/data#person-ada' },
+          variables: { iri: 'https://cartoql.example/corpus/core/data#person-ada' },
         }),
       })
       expect(response.status).toBe(200)
@@ -97,7 +97,7 @@ describe('gateway: serve (docs/04 Path 1 quickstart)', () => {
 })
 
 describe('gateway: budget gate (docs/08, threat T3) — rejection is typed, pre-execution', () => {
-  it('over-budget documents get VX_QUERY_TOO_COMPLEX with the offending metric and limit', async () => {
+  it('over-budget documents get CQL_QUERY_TOO_COMPLEX with the offending metric and limit', async () => {
     const gateway = startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core', budgets: { maxCost: 1 } })
     gateway.server.listen(0)
     try {
@@ -108,7 +108,7 @@ describe('gateway: budget gate (docs/08, threat T3) — rejection is typed, pre-
       })
       expect(response.status).toBe(400)
       const body = (await response.json()) as { errors: Array<{ extensions?: { code?: string; metric?: string; limit?: number } }> }
-      expect(body.errors[0]?.extensions?.code).toBe('VX_QUERY_TOO_COMPLEX')
+      expect(body.errors[0]?.extensions?.code).toBe('CQL_QUERY_TOO_COMPLEX')
       expect(body.errors[0]?.extensions?.metric).toBe('cost')
       expect(body.errors[0]?.extensions?.limit).toBe(1)
     } finally {
@@ -212,8 +212,8 @@ describe('gateway: observability contract (docs/10)', () => {
     }
   })
 
-  it('invalid verax.json refuses at BOOT with the typed ConfigError', () => {
-    const badConfig = join(tmpdir(), 'verax-bad.json')
+  it('invalid cartoql.json refuses at BOOT with the typed ConfigError', () => {
+    const badConfig = join(tmpdir(), 'cartoql-bad.json')
     writeFileSync(badConfig, JSON.stringify({ nonsenseSection: true }))
     expect(() =>
       startGateway({ ontologyFile, shapesFile, dataFile, moduleId: 'corpus/shards/core', configFile: badConfig }),

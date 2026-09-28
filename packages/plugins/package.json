@@ -1,5 +1,5 @@
 {
-  "name": "@verax/plugins",
+  "name": "@cartoql/plugins",
   "version": "0.0.1",
   "description": "Third-party directive compile hook (algebra-only, M2+)",
   "type": "module",

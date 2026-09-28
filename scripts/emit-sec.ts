@@ -20,7 +20,7 @@ const data = readFileSync(join(shard, 'data.ttl'), 'utf-8')
 const stamps = JSON.parse(readFileSync(join(shard, 'stamps.json'), 'utf-8'))
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/sec', {
-  datasetGraphs: ['urn:verax:shard:sec'],
+  datasetGraphs: ['urn:cartoql:shard:sec'],
   stamps,
 })
 writeFileSync(join(shard, 'expected/sdl/sec.graphql'), generated.sdl)

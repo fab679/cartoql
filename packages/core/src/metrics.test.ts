@@ -31,7 +31,7 @@ describe('metrics collector (docs/10)', () => {
   })
 })
 
-describe('verax.json loader (docs/10: no behavior outside config or SDL)', () => {
+describe('cartoql.json loader (docs/10: no behavior outside config or SDL)', () => {
   it('loads known sections; unknown sections refuse at BOOT', () => {
     const config = loadConfig('{"budgets": {"maxCost": 100}, "observability": {"metricsFamilies": ["compile"]}}')
     expect(config.budgets?.maxCost).toBe(100)

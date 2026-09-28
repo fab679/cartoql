@@ -1,4 +1,4 @@
-# Verax — Documentation
+# CartoQL — Documentation
 
 GraphQL over RDF, compiled with a plan-level security kernel and provenance-first
 semantics. Generated, never mapped; enforced in the plan, never in resolvers.
@@ -7,7 +7,7 @@ semantics. Generated, never mapped; enforced in the plan, never in resolvers.
 |---|---|---|
 | 1 | [Vision](01-vision.md) | The gap, positioning vs. existing tools, design principles, non-goals, name & license rationale |
 | 2 | [Architecture](02-architecture.md) | Generator, compiler, directive registry, the four SPIs, backend adapters, federation interface, repo layout |
-| 3 | [Directive & Error Spec](03-directive-spec.md) | Normative directive registry, enforcement rules, `VX_*` error-code contract, introspection scoping, versioning |
+| 3 | [Directive & Error Spec](03-directive-spec.md) | Normative directive registry, enforcement rules, `CQL_*` error-code contract, introspection scoping, versioning |
 | 4 | [Integration Guide](04-integration.md) | Standalone / services / platform-embedder paths, GraphQL-LD migration, deployment notes |
 | 5 | [Roadmap](05-roadmap.md) | M0–M4 milestones (M1 = usable-by-anyone endpoint first), standing engineering rules, success signals |
 | 6 | [Semantic Mapping](06-semantic-mapping.md) | The RDF→GraphQL impedance manual: types, blank nodes, language tags, inverses, pagination/injection — decision points D1–D10 |

@@ -1,7 +1,7 @@
-# @verax/generated — module: corpus/shards/typing
+# @cartoql/generated — module: corpus/shards/typing
 # Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
 
-scalar VeraxBigint
+scalar CartoQLBigint
 
 interface Agent {
   name: String!
@@ -17,7 +17,7 @@ type AgentEdge {
 }
 
 type Organization implements Agent {
-  crewSize: VeraxBigint
+  crewSize: CartoQLBigint
   name: String!
 }
 type OrganizationConnection {

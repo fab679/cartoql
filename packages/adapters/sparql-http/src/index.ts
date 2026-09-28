@@ -1,5 +1,5 @@
 /**
- * @verax/adapter-sparql-http — the default SPARQL 1.1 StoreAdapter (docs/02 §5, tier 0).
+ * @cartoql/adapter-sparql-http — the default SPARQL 1.1 StoreAdapter (docs/02 §5, tier 0).
  *
  * Projection conformance contract (part of the L0 claim, docs/09):
  *
@@ -23,7 +23,7 @@
  *
  * Response assembly reconstructs the entity tree from SPARQL result rows,
  * client-side sorted, matching the reference adapter's L0 semantics — the
- * parity suite (parity.test.ts, run when VERAX_TEST_SPARQL_ENDPOINT is set)
+ * parity suite (parity.test.ts, run when CARTOQL_TEST_SPARQL_ENDPOINT is set)
  * enforces response-equivalence against it.
  */
 import {
@@ -38,9 +38,9 @@ import {
   type ResponseData,
   type SecurityContext,
   type StoreAdapter,
-  type VeraxError,
+  type CartoQLError,
 } from '../../../core/src/executor.js'
-import type { VeraxModule } from '../../../core/src/compiler.js'
+import type { CartoQLModule } from '../../../core/src/compiler.js'
 import type { AlgebraNode, EntityLookup, FieldExpansion, Plan } from '../../../core/src/ir.js'
 import { constraintTrack, evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
 
@@ -98,13 +98,13 @@ export interface SecurityProjection {
 }
 
 /** The kernel v1 ACL vocabulary — IRIs are a registry-fixed scheme (docs/03). */
-export const ACL_MEMBER_OF = 'urn:verax:acl:memberOf'
-export const groupIri = (group: string): string => `urn:verax:acl:group:${group}`
-export const principalIri = (principalId: string): string => `urn:verax:acl:principal:${principalId}`
+export const ACL_MEMBER_OF = 'urn:cartoql:acl:memberOf'
+export const groupIri = (group: string): string => `urn:cartoql:acl:group:${group}`
+export const principalIri = (principalId: string): string => `urn:cartoql:acl:principal:${principalId}`
 
 /** Platform-role membership predicate for store-side role gates (kernel v1 vocabulary). */
-export const ACL_ROLE_MEMBER_OF = 'urn:verax:role:memberOf'
-export const roleIri = (role: string): string => `urn:verax:acl:role:${role}`
+export const ACL_ROLE_MEMBER_OF = 'urn:cartoql:role:memberOf'
+export const roleIri = (role: string): string => `urn:cartoql:acl:role:${role}`
 
 /**
  * SPARQL gate for one constraint (group:/traversal:/role: alike), referencing
@@ -116,10 +116,10 @@ function aclGate(constraint: string, aclGraph: string): string {
   const prefix = constraint.slice(0, colon + 1)
   const value = constraint.slice(colon + 1)
   if (prefix === 'group:' || prefix === 'traversal:') {
-    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_MEMBER_OF}> <${groupIri(value)}> } })`
+    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?cartoql_principal <${ACL_MEMBER_OF}> <${groupIri(value)}> } })`
   }
   if (prefix === 'role:') {
-    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_ROLE_MEMBER_OF}> <${roleIri(value)}> } })`
+    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?cartoql_principal <${ACL_ROLE_MEMBER_OF}> <${roleIri(value)}> } })`
   }
   throw new ExecutorError(`unknown constraint kind in gate emission (${constraint}) — refusing`)
 }
@@ -143,7 +143,7 @@ export function projectRoot(
   }
 
   const rootGates = gatesFor(root.constraints)
-  const scope = root.graphs[0] ?? 'urn:verax:dataset:default'
+  const scope = root.graphs[0] ?? 'urn:cartoql:dataset:default'
   emitFields(expansions, selected, projected.fields, e, gatesFor, scope)
   const typePattern = `  ?${e} a <${root.targetClass}> .`
   const where: string[] = []
@@ -153,9 +153,9 @@ export function projectRoot(
   const bindPrincipal = (target: string[]): void => {
     const term = `<${principalIriTermSafe(security?.security.principalId ?? 'anonymous')}>`
     if (mode === 'protocol') {
-      bindings['verax_principal'] = term
+      bindings['cartoql_principal'] = term
     } else {
-      target.push(`  VALUES ?verax_principal { ${term} }`)
+      target.push(`  VALUES ?cartoql_principal { ${term} }`)
     }
   }
 
@@ -291,7 +291,7 @@ function emitFields(
   fields: readonly ProjectedField[],
   parentVar: string,
   gatesFor: (constraints: readonly string[]) => readonly string[],
-  scope = 'urn:verax:dataset:default',
+  scope = 'urn:cartoql:dataset:default',
 ): void {
   fields.forEach((f) => {
     // __typename (D4): per-implementer OPTIONAL + BIND marker; assembly maps them
@@ -300,7 +300,7 @@ function emitFields(
       for (const [implIri, typeName] of Object.entries(f.node.returnsTypename)) {
         const marker = `${parentVar}_tn${markerIndex}`
         selected.push(marker)
-        patterns.push(`  OPTIONAL { GRAPH <${scope}> { ?${parentVar} a <${implIri}> } BIND(<urn:verax:type:${typeName}> AS ?${marker}) }`)
+        patterns.push(`  OPTIONAL { GRAPH <${scope}> { ?${parentVar} a <${implIri}> } BIND(<urn:cartoql:type:${typeName}> AS ?${marker}) }`)
         markerIndex += 1
       }
       return
@@ -399,7 +399,7 @@ export async function probeProtocolBinding(
 ): Promise<boolean> {
   const params = new URLSearchParams()
   params.set('query', 'SELECT ?x WHERE {}')
-  params.set('$x', '<urn:verax:protocol-binding-probe>')
+  params.set('$x', '<urn:cartoql:protocol-binding-probe>')
   // a probe is a probe: it borrows the caller's fetcher and it times out — a
   // hung endpoint must not hang capability detection (docs/08)
   const controller = new AbortController()
@@ -466,7 +466,7 @@ export class SparqlHttpAdapter implements StoreAdapter {
 
   async run(
     plan: Plan,
-    module: VeraxModule,
+    module: CartoQLModule,
     variables: ResolvedVariables,
     security?: SecurityContext,
   ): Promise<ResponseData> {
@@ -497,7 +497,7 @@ export class SparqlHttpAdapter implements StoreAdapter {
       this.#mode = (await probeProtocolBinding(this.#endpoint, this.#fetcher, this.#timeoutMs ?? 5_000)) ? 'protocol' : 'values'
     }
 
-    const errors: VeraxError[] = []
+    const errors: CartoQLError[] = []
     const data: Record<string, unknown> = {}
     // docs/08 default: min(30 s, cost x 10 ms); explicit timeoutMs overrides
     const timeoutMs = this.#timeoutMs ?? Math.min(30_000, Math.max(50, plan.cost * 10))
@@ -564,7 +564,7 @@ function assembleSingle(
   projected: ProjectedRoot,
   rows: SparqlRowSet,
   security: SecurityContext | undefined,
-  errors: VeraxError[],
+  errors: CartoQLError[],
 ): Record<string, unknown> | null {
   if (rows.results.bindings.length === 0) return null // absent and invisible share one shape
   return buildEntity(rows.results.bindings, projected.fields, security, errors)
@@ -575,7 +575,7 @@ function assembleScan(
   rows: SparqlRowSet,
   variables: ResolvedVariables,
   security: SecurityContext | undefined,
-  errors: VeraxError[],
+  errors: CartoQLError[],
 ): Record<string, unknown> {
   const root = projected.root
   // projection guaranteed ORDER BY ?entity + LIMIT size+1: distinct in result order
@@ -633,7 +633,7 @@ function buildEntity(
   rows: readonly Row[],
   fields: readonly ProjectedField[],
   security: SecurityContext | undefined,
-  errors: VeraxError[],
+  errors: CartoQLError[],
   entityVar?: string,
 ): Record<string, unknown> {
   const entity: Record<string, unknown> = {}
@@ -645,7 +645,7 @@ function buildEntity(
       const parentName = f.node.field.split('.')[0]
       const markerNames = Object.keys(firstRow).filter((k) => new RegExp(`^${entityVar}_tn\\d+$`).test(k))
       const matched = markerNames
-        .map((m) => firstRow[m]!.value.replace('urn:verax:type:', ''))
+        .map((m) => firstRow[m]!.value.replace('urn:cartoql:type:', ''))
         .filter((n2) => f.node.returnsTypename![Object.keys(f.node.returnsTypename!).find((k) => f.node.returnsTypename![k] === n2) ?? ''] !== undefined || true)
       const concrete = matched.find((n2) => n2 !== parentName)
       entity[f.node.responseKey] = concrete ?? matched[0] ?? parentName
@@ -680,7 +680,7 @@ function buildEntity(
       errors.push({
         message: `field ${f.node.field} requires authorization the principal does not hold`,
         path: f.node.field,
-        extensions: { code: 'VX_PERMISSION_DENIED' },
+        extensions: { code: 'CQL_PERMISSION_DENIED' },
       })
       entity[name] = null
       continue

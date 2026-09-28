@@ -1,6 +1,6 @@
 # 03 — Directive & Error Specification
 
-The **directive registry** and the **error-code contract** are Verax's public interface
+The **directive registry** and the **error-code contract** are CartoQL's public interface
 surface: everything else (parsers, planner internals, adapters) is replaceable detail.
 Stability promises below apply to these tables across minor versions; breaking changes
 follow the [standard-versioning](#versioning) window.
@@ -50,11 +50,11 @@ joined at that granularity. It is *not* a role-assignment mechanism; a field can
    Separately tested; never reasoned about case-by-case.
 4. **Cost/dept checks precede execution** and produce typed errors, never partial results.
 5. **Stale permission information degrades safely:** a `PermissionResolver`
-   reporting `staleACL: true` yields `VX_PERMISSION_STALE` on fields whose
+   reporting `staleACL: true` yields `CQL_PERMISSION_STALE` on fields whose
    visibility needs the fresh view — item-by-item, not request-wide (only the
    affected fields degrade).
 6. **Directly client-supplied registry directives** on any document/fragment →
-   `VX_DIRECTIVE_REJECTED` for the whole document.
+   `CQL_DIRECTIVE_REJECTED` for the whole document.
 
 ### Parking lot (proposed, not in v1 — needs design review)
 
@@ -73,7 +73,7 @@ Branch on **codes**, never messages. All errors carry `extensions`:
 
 ```
 extensions: {
-  code: "VX_…",
+  code: "CQL_…",
   schemaVersion: "v(n)",
   planId: "…" (server-side, for audit/staging repro),
   …code-specific keys below
@@ -82,21 +82,21 @@ extensions: {
 
 | Code | Situation | Code-specific keys | Client guidance |
 |---|---|---|---|
-| `VX_PERMISSION_DENIED` | explicit field selected, denial resolved | `fieldPath` | hide field gracefully |
-| `VX_PERMISSION_STALE` | resolver reported a stale view for a gating directive | `fieldPath`, `aclStaleSource` | retry post-sync; flag data age |
-| `VX_SCOPE_UNRESOLVED` | principal/scope resolution failure (IdP issues, malformed claims) | `fieldPath` | reauth; surface to admin if persistent |
-| `VX_QUERY_TOO_COMPLEX` | summed cost > cap or depth > cap | `cost`, `cap` | narrow selection / paginate |
-| `VX_DIRECTIVE_REJECTED` | client supplied registry directives | `directiveName` | remove; security directives are server-stamped only |
-| `VX_ONTOLOGY_STALE` | schema version beyond overlap window requested | `schemaVersion`, `overlapUntil`, `changelogUrl` | migrate the document |
-| `VX_SHAPE_MISMATCH` | solution doesn't satisfy the served shape (legacy partition mismatch) | `fieldPath` | check partition freshness; usually a drifted module |
-| `VX_PERSISTED_QUERY_NOT_FOUND` | unknown/stale persisted query id | `id` | re-register document (or pull the current hash) |
+| `CQL_PERMISSION_DENIED` | explicit field selected, denial resolved | `fieldPath` | hide field gracefully |
+| `CQL_PERMISSION_STALE` | resolver reported a stale view for a gating directive | `fieldPath`, `aclStaleSource` | retry post-sync; flag data age |
+| `CQL_SCOPE_UNRESOLVED` | principal/scope resolution failure (IdP issues, malformed claims) | `fieldPath` | reauth; surface to admin if persistent |
+| `CQL_QUERY_TOO_COMPLEX` | summed cost > cap or depth > cap | `cost`, `cap` | narrow selection / paginate |
+| `CQL_DIRECTIVE_REJECTED` | client supplied registry directives | `directiveName` | remove; security directives are server-stamped only |
+| `CQL_ONTOLOGY_STALE` | schema version beyond overlap window requested | `schemaVersion`, `overlapUntil`, `changelogUrl` | migrate the document |
+| `CQL_SHAPE_MISMATCH` | solution doesn't satisfy the served shape (legacy partition mismatch) | `fieldPath` | check partition freshness; usually a drifted module |
+| `CQL_PERSISTED_QUERY_NOT_FOUND` | unknown/stale persisted query id | `id` | re-register document (or pull the current hash) |
 
 No error message includes data-derived details (existence, counts, labels of hidden
 entities). Messages are logs, not API — the guidance column is the contract.
 
 ### Fail-closed *via* code — what each sideshow means (normative)
 
-- Nothing in `data` may reveal what a `VX_PERMISSION_DENIED` field would have shown —
+- Nothing in `data` may reveal what a `CQL_PERMISSION_DENIED` field would have shown —
   errors are generated during projection, never drawn **near then removed** (no
   read-then-drop implementations).
 - Counted redaction strategies must be plan-computed and proven-leak-free (see 03
@@ -129,7 +129,7 @@ posture; attackers shouldn't get a tour of it).
   same input graphs produces a byte-identical schema (hash-pinned).
 - Breaking change protocol: deprecated field → 12-month overlap (configurable
   per-install; embedders can set different windows), removal accompanied by
-  `VX_ONTOLOGY_STALE` with `changelogUrl`.
+  `CQL_ONTOLOGY_STALE` with `changelogUrl`.
 - Directive registry follows semver *at the registry level* — a directive's compiled
   semantics may tighten (security audit findings) in a *patch* release when the prior
   behavior was a violation of the enforcement rules above; this is documented as a

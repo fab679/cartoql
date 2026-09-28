@@ -1,7 +1,7 @@
 # typing shard shapes: AgentShape is the shared parent (interface fields = name);
 # Person/Organization refine it. Project.contact is Agent-typed: polymorphic field.
-@prefix vtyp:  <https://verax.example/corpus/typing#> .
-@prefix vshape: <https://verax.example/corpus/typing/shape#> .
+@prefix vtyp:  <https://cartoql.example/corpus/typing#> .
+@prefix vshape: <https://cartoql.example/corpus/typing/shape#> .
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
 
 vshape:AgentShape a sh:NodeShape ;

@@ -26,7 +26,7 @@ Meanwhile, *the security requirement has moved into the query plan* at serious
 deployments: row-level-security analogs, hop-level visibility, principal-scoped views.
 Output filtering can't do this class of enforcement. It has to be compiled.
 
-## What Verax is
+## What CartoQL is
 
 A standalone GraphQL-over-RDF gateway whose three commitments answer those two traps:
 
@@ -70,17 +70,17 @@ processes — the embedder's world, reachable through small SPIs).
 
 | Project | Relationship |
 |---|---|
-| GraphQL-LD | Complementary *technique* at serialization; Verax generates the JSON-LD contexts GraphQL-LD requires (mechanical artifact, not input). Different goal: query-time security compilation. |
-| HyperGraphQL | Historical predecessor pattern; mapping-first and dormant. Verax is the generation-not-mapping answer to it. |
-| Stardog / GraphDB GraphQL | Proof the demand exists at enterprise scale; Verax is store-agnostic and open, with the security layer as first-class. |
-| SPARQL itself | Verax never hides SPARQL: compiled plans are inspectable, and power users keep direct SPARQL. The gateway serves application developers, not SPARQL refugees. |
+| GraphQL-LD | Complementary *technique* at serialization; CartoQL generates the JSON-LD contexts GraphQL-LD requires (mechanical artifact, not input). Different goal: query-time security compilation. |
+| HyperGraphQL | Historical predecessor pattern; mapping-first and dormant. CartoQL is the generation-not-mapping answer to it. |
+| Stardog / GraphDB GraphQL | Proof the demand exists at enterprise scale; CartoQL is store-agnostic and open, with the security layer as first-class. |
+| SPARQL itself | CartoQL never hides SPARQL: compiled plans are inspectable, and power users keep direct SPARQL. The gateway serves application developers, not SPARQL refugees. |
 | GraphQL federation (Apollo) | Modeled: IRIs are natural `@key`s; auth-forwarding requirements spec'd; entity-join probe semantics defined. |
 
 ## Non-goals
 
-- **Not a schema authoring tool.** Verax serves ontologies; it does not manage them.
+- **Not a schema authoring tool.** CartoQL serves ontologies; it does not manage them.
 - **Not a permissions database.** Permission *sources* (IdPs, ACL stores) belong to
-  the embedder; Verax resolves through SPIs and enforces in plans.
+  the embedder; CartoQL resolves through SPIs and enforces in plans.
 - **Not a full GraphQL server framework.** No subscriptions, no client-state caching,
   no batching of your business REST. One job: type-safe, plan-secure reads over RDF.
 - **No write surface in v1.** Mutation support would require a data-integrity story
@@ -93,14 +93,14 @@ Two distinct adopters, both first-class:
 - **Direct users**: teams with a SPARQL endpoint / triple store who want a clean,
   versioned GraphQL API with optional ACL enforcement — day-one useful, zero
   security config required (M1).
-- **Platforms**: knowledge-graph products embedding Verax as their query plane,
+- **Platforms**: knowledge-graph products embedding CartoQL as their query plane,
   implementing the SPIs against their own permission and provenance models (M2+).
   (KMap — a knowledge-map platform — is the first such embedder and drives the
   requirements; the core stays deployment-neutral.)
 
 ## Name
 
-*Verax* (Latin, "truthful" — the grounding/citation theme) is a **working name**.
+*CartoQL* (Latin, "truthful" — the grounding/citation theme) is a **working name**.
 All identifiers live behind a package-name constant in docs and a single namespace
 constant in IRIs/error prefixes, so a rename is mechanical. Alternatives considered
 were all collision-prone or descriptive-boring; if a better name lands before the

@@ -1,5 +1,5 @@
 /**
- * @verax/adapter-reference — the reference StoreAdapter (docs/02 §5, docs/09 L0).
+ * @cartoql/adapter-reference — the reference StoreAdapter (docs/02 §5, docs/09 L0).
  *
  * Evaluates compiled plans directly over an in-memory n3 store. Its observable
  * behavior IS the platform semantics: the SPARQL 1.1 HTTP adapter must reach
@@ -13,8 +13,8 @@
  *    existence-blind: filtered before windowing, so counts/cursors/hasNextPage
  *    only ever see what the principal may see; zero error entries.
  *  - **field denial** (field-level stamps, explicitly selected) → visible
- *    denial: field resolves null plus a typed error (VX_PERMISSION_DENIED /
- *    VX_SCOPE_UNRESOLVED when fail-closed trips).
+ *    denial: field resolves null plus a typed error (CQL_PERMISSION_DENIED /
+ *    CQL_SCOPE_UNRESOLVED when fail-closed trips).
  *
  * v0 semantics notes:
  *  - the store is one logical dataset; a plan whose graph scope doesn't match the
@@ -38,10 +38,10 @@ import {
   type ResponseData,
   type SecurityContext,
   type StoreAdapter,
-  type VeraxError,
+  type CartoQLError,
 } from '../../../core/src/executor.js'
 import { constraintTrack, evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
-import type { VeraxModule } from '../../../core/src/compiler.js'
+import type { CartoQLModule } from '../../../core/src/compiler.js'
 
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
@@ -64,14 +64,14 @@ export class ReferenceAdapter implements StoreAdapter {
 
   async run(
     plan: Plan,
-    module: VeraxModule,
+    module: CartoQLModule,
     variables: ResolvedVariables,
     security: SecurityContext = OPEN_CONTEXT,
   ): Promise<ResponseData> {
     if (graphScopeHash(module.datasetGraphs) !== this.#scopeHash) {
       throw new ExecutorError('plan graph scope does not match adapter scope — the plan may not run here (D10)')
     }
-    const errors: VeraxError[] = []
+    const errors: CartoQLError[] = []
     const data: Record<string, unknown> = {}
     for (const root of plan.roots) {
       if (root.kind !== 'EntityLookup') {
@@ -96,7 +96,7 @@ export class ReferenceAdapter implements StoreAdapter {
     root: EntityLookup,
     variables: ResolvedVariables,
     security: SecurityContext,
-    errors: VeraxError[],
+    errors: CartoQLError[],
   ): Record<string, unknown> | null {
     const iri = resolveBinding(root.iri, variables, `${root.rootField}(iri:)`)
     if (typeof iri !== 'string' || iri === '') {
@@ -112,7 +112,7 @@ export class ReferenceAdapter implements StoreAdapter {
     root: EntityLookup,
     variables: ResolvedVariables,
     security: SecurityContext,
-    errors: VeraxError[],
+    errors: CartoQLError[],
   ): Record<string, unknown> {
     // Population, in order (each stage narrows the world before windowing,
     // so counts/cursors/hasNextPage describe only what survives):
@@ -198,7 +198,7 @@ export class ReferenceAdapter implements StoreAdapter {
     subject: string,
     children: readonly FieldExpansion[],
     security: SecurityContext,
-    errors: VeraxError[],
+    errors: CartoQLError[],
   ): Record<string, unknown> {
     const entity: Record<string, unknown> = {}
     for (const child of children) {
@@ -236,7 +236,7 @@ export class ReferenceAdapter implements StoreAdapter {
     subject: string,
     field: FieldExpansion,
     security: SecurityContext,
-    errors: VeraxError[],
+    errors: CartoQLError[],
   ): unknown {
     // Two tracks by constraint prefix (docs/03): `group:` → visible denial (the
     // client selected this field: null plus a typed error — a silent null would

@@ -1,1 +1,1 @@
-{"principalId":"site-reviewer","response":{"data":{"sensitiveNote":null},"errors":[]},"variables":{"iri":"https://verax.example/corpus/sec/data#note-1"},"viewVersion":"static-1"}
+{"principalId":"site-reviewer","response":{"data":{"sensitiveNote":null},"errors":[]},"variables":{"iri":"https://cartoql.example/corpus/sec/data#note-1"},"viewVersion":"static-1"}

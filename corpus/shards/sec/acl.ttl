@@ -1,13 +1,13 @@
 # sec shard ACL graph — the store-side materialization of the permission view
 # (docs/07 model: ACLs are synced facts, KMap-style embedders keep them fresh).
-# Vocabulary (kernel v1): urn:verax:acl:memberOf | urn:verax:acl:principal:<id>
-#                         urn:verax:acl:group:<name>
-@prefix vacl: <urn:verax:acl:> .
+# Vocabulary (kernel v1): urn:cartoql:acl:memberOf | urn:cartoql:acl:principal:<id>
+#                         urn:cartoql:acl:group:<name>
+@prefix vacl: <urn:cartoql:acl:> .
 
 vacl:principal:alice vacl:memberOf vacl:group:hr-comp .
 vacl:principal:alice vacl:memberOf vacl:group:legal .
 # bob holds no groups — every gate evaluates false against this graph
 vacl:principal:carol vacl:memberOf vacl:group:hr-comp . # traversal-capable, no legal
 # platform roles fixture (reviewer holds the console power; alice does NOT)
-@prefix vaclr: <urn:verax:role:> .
+@prefix vaclr: <urn:cartoql:role:> .
 vaclr:principal:site-reviewer vaclr:memberOf vaclr:role:reviewer .

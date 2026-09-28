@@ -1,7 +1,7 @@
 /**
  * L0 parity across STORES (docs/02 §5, docs/09): the conformance matrix.
  *
- * Every endpoint listed in VERAX_TEST_SPARQL_ENDPOINTS (comma-separated) runs
+ * Every endpoint listed in CARTOQL_TEST_SPARQL_ENDPOINTS (comma-separated) runs
  * the gold-shard documents through the sparql-http adapter and deep-compares
  * against the reference adapter's semantics — same plan, same corpus, different
  * engine. Oxigraph and Jena Fuseki both validate sample-queries differently;
@@ -20,7 +20,7 @@ import { compileDocument } from '../../../core/src/compiler.js'
 import { ReferenceAdapter } from '../../reference/src/index.js'
 import { SparqlHttpAdapter } from './index.js'
 
-const endpoints = (process.env['VERAX_TEST_SPARQL_ENDPOINTS'] ?? '')
+const endpoints = (process.env['CARTOQL_TEST_SPARQL_ENDPOINTS'] ?? '')
   .split(',')
   .map((e) => e.trim())
   .filter((e) => e !== '')
@@ -33,7 +33,7 @@ const data = readFileSync(join(shardRoot, 'data.ttl'), 'utf-8')
 const generated = generateSdl(
   { ontology, shapes },
   'corpus/shards/core',
-  { datasetGraphs: ['urn:verax:shard:core'] },
+  { datasetGraphs: ['urn:cartoql:shard:core'] },
 )
 const module_ = {
   moduleId: generated.moduleId,
@@ -56,9 +56,9 @@ describe.skipIf(endpoints.length === 0)('L0 parity across stores (docs/09 confor
       const adapter = new SparqlHttpAdapter({ endpoint })
       // warm the transport probe per store (auto mode)
       await adapter.run(
-        compileDocument('query { person(iri: "https://verax.example/corpus/core/data#person-ada") { name } }', module_),
+        compileDocument('query { person(iri: "https://cartoql.example/corpus/core/data#person-ada") { name } }', module_),
         module_,
-        { iri: 'https://verax.example/corpus/core/data#person-ada' },
+        { iri: 'https://cartoql.example/corpus/core/data#person-ada' },
       )
       adapters.push([endpoint, adapter])
     }

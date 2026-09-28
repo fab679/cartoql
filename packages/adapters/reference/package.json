@@ -1,5 +1,5 @@
 {
-  "name": "@verax/adapter-reference",
+  "name": "@cartoql/adapter-reference",
   "version": "0.0.1",
   "description": "Reference StoreAdapter: evaluates compiled IR over an in-memory store. Its behavior is the L0 conformance semantics (docs/09).",
   "type": "module",

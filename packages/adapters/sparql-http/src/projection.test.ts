@@ -19,7 +19,7 @@ const ontology = readFileSync(join(shardRoot, 'ontology.ttl'), 'utf-8')
 const shapes = readFileSync(join(shardRoot, 'shapes.ttl'), 'utf-8')
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core', {
-  datasetGraphs: ['urn:verax:shard:core'],
+  datasetGraphs: ['urn:cartoql:shard:core'],
 })
 const module_ = {
   moduleId: generated.moduleId,
@@ -64,7 +64,7 @@ describe('sparql-http projection: D7/T1 injection purity', () => {
     // the client's entity IRI must not appear anywhere in query text
     expect(request!.query).not.toContain('person-ada')
     // it must appear exactly once, as the term binding for the root variable
-    expect(request!.bindings['v0_e']).toBe('<https://verax.example/corpus/core/data#person-ada>')
+    expect(request!.bindings['v0_e']).toBe('<https://cartoql.example/corpus/core/data#person-ada>')
   })
 
   it('refuses IRIs that cannot be represented as absolute IRI terms', () => {
@@ -78,14 +78,14 @@ describe('sparql-http projection: D10/D6/D2 contract lines', () => {
     for (const name of docNames) {
       const vars = JSON.parse(readFileSync(join(shardRoot, 'documents', name.replace(/\.graphql$/, '.vars.json')), 'utf-8'))
       for (const request of projectDoc(name, vars)) {
-        expect(request!.query, name).toContain('GRAPH <urn:verax:shard:core>')
+        expect(request!.query, name).toContain('GRAPH <urn:cartoql:shard:core>')
       }
     }
   })
 
   it('emits the inverse-path arrow for inverse fields', () => {
-    const [request] = projectDoc('publication-authors.graphql', { iri: 'https://verax.example/corpus/core/data#pub-b1' })
-    expect(request!.query).toContain('^<https://verax.example/corpus/core#authored>')
+    const [request] = projectDoc('publication-authors.graphql', { iri: 'https://cartoql.example/corpus/core/data#pub-b1' })
+    expect(request!.query).toContain('^<https://cartoql.example/corpus/core#authored>')
   })
 
   it('LIMIT is first+1 (hasNextPage in the same round trip), validated and clamped', () => {
@@ -100,9 +100,9 @@ describe('sparql-http projection: D10/D6/D2 contract lines', () => {
   it('after-cursors become a protocol-bound FILTER, foreign-scope cursors refused', () => {
     const cursor = encodeCursor({
       orderByKey: ORDER_BY_IRI,
-      lastValue: 'https://verax.example/corpus/core/data#person-brin',
-      lastIRI: 'https://verax.example/corpus/core/data#person-brin',
-      graphHash: graphScopeHash(['urn:verax:shard:core']),
+      lastValue: 'https://cartoql.example/corpus/core/data#person-brin',
+      lastIRI: 'https://cartoql.example/corpus/core/data#person-brin',
+      graphHash: graphScopeHash(['urn:cartoql:shard:core']),
     })
     // the reference document doesn't forward `after`; compile a page query that does
     const pageQuery = 'query Page($first: Int, $after: String) { people(first: $first, after: $after) { edges { node { name } cursor } pageInfo { hasNextPage endCursor } } }'
@@ -112,12 +112,12 @@ describe('sparql-http projection: D10/D6/D2 contract lines', () => {
       return projectRoot(root, i, { first: 2, after: cursor })
     })
     expect(request!.query).toContain('FILTER(STR(?v0_e) > STR(?v0_e_after))')
-    expect(request!.bindings['v0_e_after']).toBe('<https://verax.example/corpus/core/data#person-brin>')
+    expect(request!.bindings['v0_e_after']).toBe('<https://cartoql.example/corpus/core/data#person-brin>')
 
     const foreignCursor = encodeCursor({
       orderByKey: ORDER_BY_IRI,
       lastValue: 'x', lastIRI: 'x',
-      graphHash: graphScopeHash(['urn:verax:some-other-graph']),
+      graphHash: graphScopeHash(['urn:cartoql:some-other-graph']),
     })
     const foreignPlan = compileDocument(pageQuery, module_)
     expect(() => foreignPlan.roots.map((root, i) => {

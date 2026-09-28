@@ -1,5 +1,5 @@
 /**
- * @verax/generator — SHACL + ontology → SDL (docs/02 §1, docs/06 for the mapping rules).
+ * @cartoql/generator — SHACL + ontology → SDL (docs/02 §1, docs/06 for the mapping rules).
  *
  * Determinism is a hard requirement (docs/09: gold-shard snapshots are byte-stable):
  * types and fields are emitted in sorted order, scalar declarations are limited to
@@ -12,7 +12,7 @@ const SH = 'http://www.w3.org/ns/shacl#'
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
 /** Scalar prefix stays a constant for the whole renameability policy (docs/01). */
-export const SCALAR_PREFIX = 'Verax'
+export const SCALAR_PREFIX = 'CartoQL'
 
 /**
  * XSD → GraphQL scalar map (docs/06 §Literals & scalars, decision D3):
@@ -43,7 +43,7 @@ const SCALAR_MAP: Record<string, string> = {
 
 export class GenerationError extends Error {
   constructor(message: string) {
-    super(`[@verax/generator] ${message}`)
+    super(`[@cartoql/generator] ${message}`)
     this.name = 'GenerationError'
   }
 }
@@ -79,7 +79,7 @@ export interface GeneratedType {
   typeStamp?: string
 }
 
-/** Field/root → SHACL-path contract: the compiler's input map (see @verax/core's identical structural type). */
+/** Field/root → SHACL-path contract: the compiler's input map (see @cartoql/core's identical structural type). */
 export interface SemanticMap {
   readonly fields: Readonly<Record<string, {
     readonly pathIri: string
@@ -376,7 +376,7 @@ export function generateSdl(
       roots,
       ...(Object.keys(implementers).length > 0 ? { hierarchy: { implementers, parentOf } } : {}),
     },
-    datasetGraphs: options.datasetGraphs ?? ['urn:verax:dataset:default'],
+    datasetGraphs: options.datasetGraphs ?? ['urn:cartoql:dataset:default'],
   }
 }
 
@@ -554,7 +554,7 @@ function renderSdl(
   }
 
   const lines: string[] = []
-  lines.push(`# @verax/generated — module: ${moduleId}`)
+  lines.push(`# @cartoql/generated — module: ${moduleId}`)
   lines.push('# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.')
   if (stamps.length > 0) {
     lines.push('# Security-stamped module: directives below are generator-originated (docs/03 rule 1).')

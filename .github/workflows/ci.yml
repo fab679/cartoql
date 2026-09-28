@@ -20,8 +20,8 @@ jobs:
         ports:
           - 3030:3030
     env:
-      VERAX_TEST_SPARQL_ENDPOINT: http://localhost:7878/query
-      VERAX_TEST_SPARQL_ENDPOINTS: http://localhost:7878/query,http://localhost:3030/test/query
+      CARTOQL_TEST_SPARQL_ENDPOINT: http://localhost:7878/query
+      CARTOQL_TEST_SPARQL_ENDPOINTS: http://localhost:7878/query,http://localhost:3030/test/query
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,19 +35,19 @@ jobs:
             curl -sf -X POST --user admin:admin http://localhost:3030/$/datasets \
               -d "dbName=test" -d "dbType=tdb2" -o /dev/null && break || sleep 5
           done
-          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Averax%3Ashard%3Acore" \
+          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Acartoql%3Ashard%3Acore" \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/core/data.ttl
-          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Averax%3Ashard%3Atyping" \
+          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Acartoql%3Ashard%3Atyping" \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/typing/data.ttl
       - name: Load gold + sec shards into Oxigraph (named graphs, D10)
         run: |
-          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Acore' \
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Acartoql%3Ashard%3Acore' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/core/data.ttl
-          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Asec' \
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Acartoql%3Ashard%3Asec' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/data.ttl
-          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Asec-acl' \
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Acartoql%3Ashard%3Asec-acl' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/acl.ttl
-          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Atyping' \
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Acartoql%3Ashard%3Atyping' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/typing/data.ttl
       - run: npm run typecheck
       - run: npm run test

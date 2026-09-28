@@ -1,12 +1,12 @@
-# Verax
+# CartoQL
 
 **GraphQL over RDF, compiled with a plan-level security kernel and
 provenance-first semantics.**
 
-> 📛 Verax is a working name (Latin: *truthful*). All identifiers keep the project
+> 📛 CartoQL is a working name (Latin: *truthful*). All identifiers keep the project
 > renameable — see [docs/01-vision.md](docs/01-vision.md#name).
 
-Verax turns any RDF graph — an ontology, a triple store, a SPARQL endpoint — into a
+CartoQL turns any RDF graph — an ontology, a triple store, a SPARQL endpoint — into a
 **versioned GraphQL API**, and compiles every GraphQL document down to SPARQL plans
 that can carry **access-control joins, cost budgets, and provenance bindings** *inside
 the query plan*, where they can't be bypassed by resolvers or client cleverness.
@@ -26,7 +26,7 @@ Existing options make one of two mistakes:
 | GraphQL-LD, HyperGraphQL | **Mapping-first**: hand-written field→predicate contexts rot the moment your ontology evolves. No security story beyond "whatever your endpoint does." |
 | Vendor GraphQL endpoints (Stardog, GraphDB) | Security compilation is a single-vendor feature, and the semantics live in proprietary inference layers. |
 
-Verax's three commitments:
+CartoQL's three commitments:
 
 1. **Generated, never mapped.** SDL is a build artifact of your ontology + SHACL shapes.
    Rename a class, republish, get a new typed schema with `@deprecated` migration
@@ -34,7 +34,7 @@ Verax's three commitments:
 2. **Security compiles into the plan.** Authorization isn't a resolver filter or an
    output scrubber — constraint joins are injected into the compiled SPARQL algebra,
    fail-closed, indistinguishable-hidden (invisible data never announces itself in
-   `errors[]` on probe/join paths). Bring your own permission model: Verax exposes a
+   `errors[]` on probe/join paths). Bring your own permission model: CartoQL exposes a
    small `PermissionResolver` SPI, everything else is directives.
 3. **Provenance ride-along.** Fields can carry `prov`-style run identifiers and
    grounding pointers in their payload contract, so API consumers can cite what they
@@ -51,7 +51,7 @@ Verax's three commitments:
 - Principal-scoped schema slicing (serve each consumer only the modules it uses)
 - Apollo-federation-ready entity keying (`@key` on IRIs) with auth-forwarding
   requirements spec'd
-- Stable error-code contract (`VX_*`) — branch on codes, never messages
+- Stable error-code contract (`CQL_*`) — branch on codes, never messages
 - TypeScript core, designed to embed as a standalone gateway service
 
 ## Status
@@ -67,7 +67,7 @@ npm run serve --   --ontology corpus/shards/core/ontology.ttl   --shapes   corpu
 
 curl -s -X POST localhost:4137/graphql -H 'content-type: application/json' -d '{
   "query": "query Q($iri: ID!) { publication(iri: $iri) { name year authoredInverse { name } } }",
-  "variables": {"iri": "https://verax.example/corpus/core/data#pub-a3"}
+  "variables": {"iri": "https://cartoql.example/corpus/core/data#pub-a3"}
 }'
 # {"data":{"publication":{"name":"Plan-level authorization","year":"2025",
 #   "authoredInverse":[{"name":"Ada Ionescu"},{"name":"Cleo Marchetti"}]}},"errors":[]}
@@ -91,20 +91,20 @@ the no-interpolation rule. The gateway now serves the security path end to end �
 ```bash
 npm run serve -- \
   --ontology sec/ontology.ttl --shapes sec/shapes.ttl --data sec/data.ttl \
-  --graph urn:verax:shard:sec \
+  --graph urn:cartoql:shard:sec \
   --stamps sec/stamps.json          # @requireGroup rules (docs/03 stamping)\
   --auth-file claims.json           # {"alice": ["hr-comp","legal"]}
-# principal per request: header  x-verax-principal: alice
+# principal per request: header  x-cartoql-principal: alice
 ```
 
 The M2 security kernel has begun: SHACL shape + stamp configurations generate
 `@requireGroup` directives; the compiler translates them into plan-level
 constraints, and the adapter enforces the spec's two-track semantics (docs/03) —
-field denial is visible (`null` + `VX_PERMISSION_DENIED`), entity gating is
+field denial is visible (`null` + `CQL_PERMISSION_DENIED`), entity gating is
 existence-blind (invisible ≡ absent, pair-tested). The reviewed evidence lives in
 `corpus/shards/sec/` with per-principal response snapshots.
 
-Remaining for M1: npm packaging for `npx verax-gateway` and the external-tester
+Remaining for M1: npm packaging for `npx cartoql-gateway` and the external-tester
 milestone. See the [roadmap](docs/05-roadmap.md).
 
 ## Documentation
@@ -114,7 +114,7 @@ Full set with reading paths: [docs/README.md](docs/README.md). Highlights:
 | Doc | Covers |
 |---|---|
 | [Vision](docs/01-vision.md) | The gap, positioning, principles, non-goals, license rationale |
-| [Directive & Error Spec](docs/03-directive-spec.md) | The normative contract: directive registry, enforcement rules, `VX_*` codes |
+| [Directive & Error Spec](docs/03-directive-spec.md) | The normative contract: directive registry, enforcement rules, `CQL_*` codes |
 | [Semantic Mapping](docs/06-semantic-mapping.md) | RDF→GraphQL impedance manual — the decision points an implementer hits on day one |
 | [Threat Model](docs/07-threat-model.md) | T1–T10 with mitigations; coordinated-disclosure policy |
 | [Testing & Conformance](docs/09-testing-conformance.md) | Gold shards, leak probes, adapter conformance levels |

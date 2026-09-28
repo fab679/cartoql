@@ -9,7 +9,7 @@ Three adoption paths, in increasing commitment order.
 The M1 target: *useful to everyone, security optional.*
 
 ```
-$ npx verax-gateway serve \
+$ npx cartoql-gateway serve \
     --sparql https://your-store.example/sparql \
     --shapes https://your-site.example/shapes.ttl \
     --ontology https://your-site.example/ontology.ttl
@@ -19,7 +19,7 @@ $ npx verax-gateway serve \
 What you get:
 - Generated SDL (`/schema/sdl`, versioned against shape/ontology file checksums: sums
   of your `--shapes`/`--ontology` files pinned in runtime; simple thin mode: options in
-  a single `verax.json`)
+  a single `cartoql.json`)
 - The full compile+execute path minus security directives (`@scope` etc. are absent —
   the generator skipped them because no security stamping config was provided)
 - `@maxDepth`, `@budget`, `@redactWith` are *available* but not stamped; operators
@@ -27,7 +27,7 @@ What you get:
 - Multi-module: pass additional `--shapes-file … --ontology-file …` bundles; modules
   compose with type-name prefixes (you declare them in SDL generation configs)
 - Service federation via SPARQL `SERVICE` — config-driven endpoints (`--federated-query`
-  list) allowed only when the target endpoint is declared in `verax.json` (no
+  list) allowed only when the target endpoint is declared in `cartoql.json` (no
   wildcard fan-out)
 
 What you don't get in this mode (by design, not limitation): multi-principal
@@ -39,12 +39,12 @@ policy sources.
 
 ## Path 2 — Services mode: security profiles + permission sources
 
-For teams who *do* need permissions served over one store without embedding Verax in
-a larger platform. You provide a **JSON permission-source config** and Verax handles
+For teams who *do* need permissions served over one store without embedding CartoQL in
+a larger platform. You provide a **JSON permission-source config** and CartoQL handles
 the rest:
 
 ```jsonc
-// verax.json
+// cartoql.json
 {
   "modules": [
     { "prefix": "Person",   "shapes": "./person.shacl.ttl", "ontology": "./person-onto.ttl" },
@@ -65,7 +65,7 @@ Built-in `PermissionResolver` providers at launch: `open` (standalone default),
 `jwt-groups`, `oidc-introspect` (runtime token introspection against issuer),
 `file` (static claims fixture — dev only). Anything richer (sync-from-IdPACL
 federation like SCIM, database-driven claims) is a plugin or an embedder concern —
-Verax's SPI is the extension point; the built-ins never pretend to replace company
+CartoQL's SPI is the extension point; the built-ins never pretend to replace company
 directory systems.
 
 *Operationally important:* standalone mode with `open`/`file` resolvers is a **dev /
@@ -76,7 +76,7 @@ security value begins when a real resolver is configured, never by default decla
 
 ## Path 3 — Platform embedder (the KMap case)
 
-Embed Verax as the query plane of a larger system. Verax ships as a service
+Embed CartoQL as the query plane of a larger system. CartoQL ships as a service
 (sidecar / same-VPC deployment) or embedded in-process (TypeScript):
 
 ```
@@ -84,7 +84,7 @@ platform (any language)
   ├── ingestion pipeline          (platform-owned)
   ├── auth / directory / ACL sync (platform-owned — source of claims)
   ├── ontology publishing         (platform-owned review gates)
-  └── Verax gateway sidecar ───── implements all four SPIs:
+  └── CartoQL gateway sidecar ───── implements all four SPIs:
         PermissionResolver    → platform permission kernel (per-principal view versioning)
         StoreAdapter          → platform's graph store + vector index hybrid (still plan-first)
         DocumentSourceResolver → persisted-query registry (platform-managed)
@@ -94,14 +94,14 @@ platform (any language)
 Embedding contract (extracted from the KMap integration, [kmap docs 09a] for the
 concrete instance):
 
-1. The platform authors ontology modules + SHACL and publishes versions; Verax
+1. The platform authors ontology modules + SHACL and publishes versions; CartoQL
    generates matching SDL and serves the composed slices per principal class.
 2. The platform stamps security directives — from its own governance metadata — as
    part of the same publish pipeline. `@graphSet` is the isolation primitive: the
    platform binds each served schema to its tenant graph sets; cross-domain graph
    documents are unexpressible in the compiled algebra (repository-level invariant).
 3. The platform's permission kernel returns a **versioned permission view** per
-   request; Verax feeds `viewVersion` into every plan-cache key so an ACL change
+   request; CartoQL feeds `viewVersion` into every plan-cache key so an ACL change
    invalidates cleanly.
 4. Provenance payloads are compiled, not fetched: integrators' claimed-vsproved
    data marks (`runId`, groundings) come from the samples' own bindings.
@@ -111,15 +111,15 @@ concrete instance):
    budgets enforcement for free.
 
 This is the separation of duties' whole point: **mechanics here, policy at home.**
-Verax core contains zero deployment-specific concepts — no "tenant," no "client,"
-no "review queue." Matching error-code extensions (`VX_*` + embedder extras
+CartoQL core contains zero deployment-specific concepts — no "tenant," no "client,"
+no "review queue." Matching error-code extensions (`CQL_*` + embedder extras
 namespaced like `KM_*`...) do the crossing.
 
 ---
 
 ## Migrating from GraphQL-LD / hand-mapped layers
 
-1. Keep your JSON-LD contexts: Verax can ingest them as *collateral*
+1. Keep your JSON-LD contexts: CartoQL can ingest them as *collateral*
    (`--context-map`) to auto-generate equivalent entity-compaction for JSON-LD
    response shaping — the context becomes an output artifact, not an input fixture.
    Check the generated SDL against your existing field names; prefix choices may
@@ -129,7 +129,7 @@ namespaced like `KM_*`...) do the crossing.
    usually indicate SHACL shape coverage gaps, which is the map-rot GraphQL-LD layers
    accumulate being *made visible*. Fill the shapes, not the mapping.
 3. Add security after the port: stamping config marks groups onto fields; then
-   re-run the permission-fixture suite that the testkit generates (`verax testkit
+   re-run the permission-fixture suite that the testkit generates (`cartoql testkit
    shape-coverage … --emit-fixtures`) — an embedder's security tests start as
    generated fixtures, not blank-page rewrite.
 
@@ -139,8 +139,8 @@ namespaced like `KM_*`...) do the crossing.
 
 - Single container, stateless (all state external: SPARQL endpoint, SDL module set,
   persisted-query registry) — one horizontalScaling knob; plan cache in-process.
-- Set `VERAX_ERROR_PREFIX` if rebranding the `VX_*` codes as part of a platform
-  embed (embedder codes stay stable across Verax minor versions).
+- Set `CARTOQL_ERROR_PREFIX` if rebranding the `CQL_*` codes as part of a platform
+  embed (embedder codes stay stable across CartoQL minor versions).
 - Health endpoints report: SDL module versions served, resolver provider, adapter
   tier, and whether provenance mode is on — ops should never discover policy posture
   by accident.

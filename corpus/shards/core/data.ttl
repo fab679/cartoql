@@ -1,8 +1,8 @@
 # core shard data — deliberately small, exercises the M1 decision points (docs/06)
 # Coverage targets: single-valued types, list-typed inverse paths, numerous-fact
 # pagination (D6 ordering key), and degenerate empty-list cases.
-@prefix vcore: <https://verax.example/corpus/core#> .
-@prefix vdata: <https://verax.example/corpus/core/data#> .
+@prefix vcore: <https://cartoql.example/corpus/core#> .
+@prefix vdata: <https://cartoql.example/corpus/core/data#> .
 
 vdata:org-acme   a vcore:Organization ; vcore:name "Acme Research Institute" ; vcore:foundedYear "1994"^^<http://www.w3.org/2001/XMLSchema#gYear> ; vcore:motto "Brick by brick"@en .
 vdata:org-north  a vcore:Organization ; vcore:name "Northwind Analytics" ;    vcore:foundedYear "2011"^^<http://www.w3.org/2001/XMLSchema#gYear> .

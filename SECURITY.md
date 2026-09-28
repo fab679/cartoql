@@ -1,6 +1,6 @@
 # Security Policy
 
-Verax's core value is security compilation; security reports are treated as
+CartoQL's core value is security compilation; security reports are treated as
 first-class project work, not embarrassment.
 
 ## Supported versions

@@ -1,7 +1,7 @@
 /**
  * SPARQL constraint-pushdown (M2 slice 2): offline tests for the projection
  * gates — the store-side half of the kernel. Live response-equivalence vs the
- * reference adapter lives in parity.test.ts (needs VERAX_TEST_SPARQL_ENDPOINT).
+ * reference adapter lives in parity.test.ts (needs CARTOQL_TEST_SPARQL_ENDPOINT).
  */
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -20,7 +20,7 @@ const shapes = readFileSync(join(shard, 'shapes.ttl'), 'utf-8')
 const stamps = JSON.parse(readFileSync(join(shard, 'stamps.json'), 'utf-8'))
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/sec', {
-  datasetGraphs: ['urn:verax:shard:sec'],
+  datasetGraphs: ['urn:cartoql:shard:sec'],
   stamps,
 })
 const module_ = {
@@ -29,7 +29,7 @@ const module_ = {
   schema: buildSchema(generated.sdl),
   semanticMap: generated.semanticMap,
   datasetGraphs: generated.datasetGraphs,
-  aclGraph: 'urn:verax:shard:sec-acl',
+  aclGraph: 'urn:cartoql:shard:sec-acl',
 }
 
 const context = (principalId: string, groups: readonly string[]): SecurityContext => ({
@@ -48,26 +48,26 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
     const { roots } = planRoots('orgs.graphql')
     const request = projectRoot(roots[0]!, 0, {}, 'values', {
       security: context('alice', ['hr-comp']),
-      aclGraph: 'urn:verax:shard:sec-acl',
+      aclGraph: 'urn:cartoql:shard:sec-acl',
     })
-    expect(request.query).toContain('urn:verax:shard:sec-acl')
+    expect(request.query).toContain('urn:cartoql:shard:sec-acl')
     expect(request.query).toContain(ACL_MEMBER_OF)
     expect(request.query).toContain(groupIri('hr-comp'))
-    const salaryOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e <https://verax.example/corpus/sec#salaryBudget> ?v0_e_1_v')
-    const salaryGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:verax:shard:sec-acl>', salaryOptionalAt)
+    const salaryOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e <https://cartoql.example/corpus/sec#salaryBudget> ?v0_e_1_v')
+    const salaryGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:cartoql:shard:sec-acl>', salaryOptionalAt)
     expect(salaryOptionalAt).toBeGreaterThan(-1)
     expect(salaryGateAt).toBeGreaterThan(salaryOptionalAt) // gate after the triple, inside the OPTIONAL
     // gate after the field triple, inside the OPTIONAL
     expect(request.query.indexOf('?v0_e_1_v')).toBeLessThan(request.query.indexOf('FILTER(EXISTS'))
     // principal rides the guarded values transport, never query text interpolation
-    expect(request.query).toContain('VALUES ?verax_principal { <urn:verax:acl:principal:alice> }')
+    expect(request.query).toContain('VALUES ?cartoql_principal { <urn:cartoql:acl:principal:alice> }')
   })
 
   it('entity gates live INSIDE the scan window sub-select (existence-blind pagination)', () => {
     const { roots } = planRoots('notes-scan.graphql')
     const request = projectRoot(roots[0]!, 0, {}, 'values', {
       security: context('bob', []),
-      aclGraph: 'urn:verax:shard:sec-acl',
+      aclGraph: 'urn:cartoql:shard:sec-acl',
     })
     const subSelectStart = request.query.indexOf('{ SELECT ?v0_e')
     const limitPos = request.query.indexOf('LIMIT')
@@ -92,12 +92,12 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
     if (!root || root.kind !== 'EntityLookup') throw new Error('bad root')
     const request = projectRoot(root, 0, {}, 'values', {
       security: context('bob', []),
-      aclGraph: 'urn:verax:shard:sec-acl',
+      aclGraph: 'urn:cartoql:shard:sec-acl',
     })
     // the traversal constraint maps through the same FILTER EXISTS join
     expect(request.query).toContain(groupIri('hr-comp'))
-    const notesOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e ^<https://verax.example/corpus/sec#noteOf> ?v0_e_1 .')
-    const notesGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:verax:shard:sec-acl>', notesOptionalAt)
+    const notesOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e ^<https://cartoql.example/corpus/sec#noteOf> ?v0_e_1 .')
+    const notesGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:cartoql:shard:sec-acl>', notesOptionalAt)
     expect(notesOptionalAt).toBeGreaterThan(-1)
     expect(notesGateAt).toBeGreaterThan(notesOptionalAt) // same in-store gate mechanism
   })
@@ -107,7 +107,7 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
     expect(() =>
       projectRoot(roots[0]!, 0, {}, 'values', {
         security: context('drop table users; --', []),
-        aclGraph: 'urn:verax:shard:sec-acl',
+        aclGraph: 'urn:cartoql:shard:sec-acl',
       }),
     ).toThrow(ExecutorError)
   })

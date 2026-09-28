@@ -21,7 +21,7 @@ describe('gateway with jwt-groups provider', () => {
       shapesFile: join(secShard, 'shapes.ttl'),
       dataFile: join(secShard, 'data.ttl'),
       moduleId: 'corpus/shards/sec',
-      graphFlag: 'urn:verax:shard:sec',
+      graphFlag: 'urn:cartoql:shard:sec',
       stampsFile: join(secShard, 'stamps.json'),
       jwtSecret: SECRET,
     })
@@ -55,18 +55,18 @@ describe('gateway with jwt-groups provider', () => {
     const outGroup = await ask(await tokenFor([]))
     expect(outGroup.data.organizations.edges.map((e) => e.node.salaryBudget)).toEqual([null, null, null])
     expect(outGroup.errors.map((e) => e.extensions?.code)).toEqual([
-      'VX_PERMISSION_DENIED',
-      'VX_PERMISSION_DENIED',
-      'VX_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
     ])
 
     const tampered = (await tokenFor(['hr-comp'])).slice(0, -2) + 'qq'
     const refuser = await ask(tampered)
     // tampered token → resolver throws → FAIL_CLOSED_VIEW → every gate denies, visibly
     expect(refuser.errors.map((e) => e.extensions?.code)).toEqual([
-      'VX_PERMISSION_DENIED',
-      'VX_PERMISSION_DENIED',
-      'VX_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
+      'CQL_PERMISSION_DENIED',
     ])
 
     const health = (await (await fetch(`${url}/health`)).json()) as Record<string, unknown>
@@ -76,14 +76,14 @@ describe('gateway with jwt-groups provider', () => {
   })
 
   it('resolver precedence is jwt > static > open', async () => {
-    const authDir = mkdtempSync(join(tmpdir(), 'verax-jwt-'))
+    const authDir = mkdtempSync(join(tmpdir(), 'cartoql-jwt-'))
     writeFileSync(join(authDir, 'claims.json'), JSON.stringify({ alice: ['hr-comp'] }))
     const gateway = startGateway({
       ontologyFile: join(secShard, 'ontology.ttl'),
       shapesFile: join(secShard, 'shapes.ttl'),
       dataFile: join(secShard, 'data.ttl'),
       moduleId: 'corpus/shards/sec',
-      graphFlag: 'urn:verax:shard:sec',
+      graphFlag: 'urn:cartoql:shard:sec',
       stampsFile: join(secShard, 'stamps.json'),
       jwtSecret: SECRET,
       authFile: join(authDir, 'claims.json'),

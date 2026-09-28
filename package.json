@@ -1,5 +1,5 @@
 {
-  "name": "verax",
+  "name": "cartoql",
   "private": true,
   "version": "0.0.1",
   "description": "GraphQL over RDF, compiled with a plan-level security kernel. Monorepo root.",

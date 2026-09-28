@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "verax.json",
-  "description": "Verax gateway configuration (docs/10): no behavior that isn't in config or SDL.",
+  "title": "cartoql.json",
+  "description": "CartoQL gateway configuration (docs/10): no behavior that isn't in config or SDL.",
   "type": "object",
   "additionalProperties": false,
   "properties": {

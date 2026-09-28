@@ -1,8 +1,8 @@
 /**
  * L0 parity suite (docs/09): the SPARQL HTTP adapter must be response-equivalent
  * to the reference adapter over the gold shard — run when
- * VERAX_TEST_SPARQL_ENDPOINT points at a live SPARQL 1.1 endpoint that has the
- * shard loaded into named graph `urn:verax:shard:core`.
+ * CARTOQL_TEST_SPARQL_ENDPOINT points at a live SPARQL 1.1 endpoint that has the
+ * shard loaded into named graph `urn:cartoql:shard:core`.
  *
  * Skipped with a visible log otherwise (CI has no store; the projection
  * snapshots and reference suite still run).
@@ -20,7 +20,7 @@ import { compileDocument } from '../../../core/src/compiler.js'
 import { ReferenceAdapter } from '../../reference/src/index.js'
 import { probeProtocolBinding, SparqlHttpAdapter } from './index.js'
 
-const endpoint = process.env['VERAX_TEST_SPARQL_ENDPOINT']
+const endpoint = process.env['CARTOQL_TEST_SPARQL_ENDPOINT']
 
 const shardRoot = fileURLToPath(new URL('../../../../corpus/shards/core/', import.meta.url))
 const ontology = readFileSync(join(shardRoot, 'ontology.ttl'), 'utf-8')
@@ -28,7 +28,7 @@ const shapes = readFileSync(join(shardRoot, 'shapes.ttl'), 'utf-8')
 const data = readFileSync(join(shardRoot, 'data.ttl'), 'utf-8')
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core', {
-  datasetGraphs: ['urn:verax:shard:core'],
+  datasetGraphs: ['urn:cartoql:shard:core'],
 })
 const module_ = {
   moduleId: generated.moduleId,
@@ -82,8 +82,8 @@ const suite = describe.skipIf(!endpoint)('L0 parity: sparql-http vs reference (l
   it('absent entity: null, zero errors — same shape as reference', async () => {
     const source = readFileSync(join(shardRoot, 'documents/person-detail.graphql'), 'utf-8')
     const plan = compileDocument(source, module_)
-    const actual = await adapter.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#nope' })
-    const expected = await reference.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#nope' })
+    const actual = await adapter.run(plan, module_, { iri: 'https://cartoql.example/corpus/core/data#nope' })
+    const expected = await reference.run(plan, module_, { iri: 'https://cartoql.example/corpus/core/data#nope' })
     expect(actual.data['person']).toBeNull()
     expect(actual.data).toEqual(expected.data)
   })
@@ -116,7 +116,7 @@ const secStamps = JSON.parse(readFileSync(join(secShard, 'stamps.json'), 'utf-8'
 const secGenerated = generateSdl(
   { ontology: secOntology, shapes: secShapes },
   'corpus/shards/sec',
-  { datasetGraphs: ['urn:verax:shard:sec'], stamps: secStamps },
+  { datasetGraphs: ['urn:cartoql:shard:sec'], stamps: secStamps },
 )
 const secModule = {
   moduleId: secGenerated.moduleId,
@@ -124,7 +124,7 @@ const secModule = {
   schema: buildSchema(secGenerated.sdl),
   semanticMap: secGenerated.semanticMap,
   datasetGraphs: secGenerated.datasetGraphs,
-  aclGraph: 'urn:verax:shard:sec-acl',
+  aclGraph: 'urn:cartoql:shard:sec-acl',
 }
 const secReference = ReferenceAdapter.fromTurtle(secData, secModule.datasetGraphs)
 
@@ -184,7 +184,7 @@ const typingData = readFileSync(join(typingShard, 'data.ttl'), 'utf-8')
 const typingGenerated = generateSdl(
   { ontology: typingOntology, shapes: typingShapes },
   'corpus/shards/typing',
-  { datasetGraphs: ['urn:verax:shard:typing'] },
+  { datasetGraphs: ['urn:cartoql:shard:typing'] },
 )
 const typingModule = {
   moduleId: typingGenerated.moduleId,

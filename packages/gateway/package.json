@@ -1,5 +1,5 @@
 {
-  "name": "@verax/gateway",
+  "name": "@cartoql/gateway",
   "version": "0.0.1",
   "description": "HTTP surface, introspection scoping, persisted queries (M1+)",
   "type": "module",

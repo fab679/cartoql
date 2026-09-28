@@ -15,9 +15,9 @@ import { ReferenceAdapter } from '../packages/adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../packages/adapters/sparql-http/src/index.js'
 import { loadConfig } from '../packages/core/src/config.js'
 
-const SHARD = process.env['VERAX_PERF_SHARD'] ?? '/tmp/verax-perf-shard'
-const ENDPOINT = process.env['VERAX_PERF_ENDPOINT']
-const SAMPLES = Number(process.env['VERAX_PERF_SAMPLES'] ?? 20)
+const SHARD = process.env['CARTOQL_PERF_SHARD'] ?? '/tmp/cartoql-perf-shard'
+const ENDPOINT = process.env['CARTOQL_PERF_ENDPOINT']
+const SAMPLES = Number(process.env['CARTOQL_PERF_SAMPLES'] ?? 20)
 
 execSync(`npx tsx scripts/gen-perf-shard.ts ${SHARD}`, { stdio: 'inherit' })
 
@@ -25,7 +25,7 @@ const shard = 'corpus/shards/core/'
 const generated = generateSdl(
   { ontology: readFileSync(shard + 'ontology.ttl', 'utf-8'), shapes: readFileSync(shard + 'shapes.ttl', 'utf-8') },
   'perf',
-  { datasetGraphs: ['urn:verax:shard:perf'] },
+  { datasetGraphs: ['urn:cartoql:shard:perf'] },
 )
 const module_ = {
   moduleId: generated.moduleId,
@@ -36,7 +36,7 @@ const module_ = {
 }
 
 const WORKLOADS: Array<[string, string, Record<string, unknown>]> = [
-  ['single-entity + 2 levels', 'query { person(iri: "https://verax.example/corpus/core/data#person-10") { name worksFor { name } } }', {}],
+  ['single-entity + 2 levels', 'query { person(iri: "https://cartoql.example/corpus/core/data#person-10") { name worksFor { name } } }', {}],
   ['paginated list (20)', 'query { people(first: 20) { edges { node { name } } pageInfo { hasNextPage } } }', {}],
   ['3-level nested', 'query { people(first: 5) { edges { node { name authored { name } worksFor { name } } } } }', {}],
 ]

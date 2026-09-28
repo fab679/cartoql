@@ -1,5 +1,5 @@
 {
-  "name": "@verax/adapter-sparql-http",
+  "name": "@cartoql/adapter-sparql-http",
   "version": "0.0.1",
   "description": "Default SPARQL 1.1 StoreAdapter (M1)",
   "type": "module",

@@ -1,21 +1,21 @@
 /**
- * @verax/core — budget enforcement (docs/08; threat T3's mitigation made live).
+ * @cartoql/core — budget enforcement (docs/08; threat T3's mitigation made live).
  *
  * Cost was already computed and snapshot-pinned; this module turns it into a
- * gate. Rejection is pre-execution and typed — VX_QUERY_TOO_COMPLEX with the
+ * gate. Rejection is pre-execution and typed — CQL_QUERY_TOO_COMPLEX with the
  * offending metric and the limit in the error, never a truncated result set
  * and never a hung request answered partially.
  */
 import { planDepth, planNodeCount, type Plan } from './ir.js'
 
 export class BudgetError extends Error {
-  readonly code = 'VX_QUERY_TOO_COMPLEX'
+  readonly code = 'CQL_QUERY_TOO_COMPLEX'
   readonly metric: 'cost' | 'depth' | 'nodes'
   readonly value: number
   readonly limit: number
 
   constructor(metric: BudgetError['metric'], value: number, limit: number) {
-    super(`VX_QUERY_TOO_COMPLEX: plan ${metric} ${value} exceeds limit ${limit} — narrow the selection or paginate`)
+    super(`CQL_QUERY_TOO_COMPLEX: plan ${metric} ${value} exceeds limit ${limit} — narrow the selection or paginate`)
     this.name = 'BudgetError'
     this.metric = metric
     this.value = value

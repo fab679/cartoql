@@ -1,5 +1,5 @@
 /**
- * `verax-gateway serve` — CLI entrypoint (docs/04 Path 1: the 5-minute quickstart).
+ * `cartoql-gateway serve` — CLI entrypoint (docs/04 Path 1: the 5-minute quickstart).
  *
  * Flags (v0):
  *   --ontology FILE   required. module classes/properties (.ttl)
@@ -11,10 +11,10 @@
  *   --auth-file FILE static claims fixture: {"alice": ["hr-comp","legal"]}
  *                     (absent → documented open posture, no security claims)
  *   --acl-graph IRI  ACL graph scope for stamped modules (store-side gates)
- *   --graph    IRI    dataset graph scope (D10 — e.g. urn:verax:shard:core).
- *                     Default: urn:verax:dataset:default. The store must hold
+ *   --graph    IRI    dataset graph scope (D10 — e.g. urn:cartoql:shard:core).
+ *                     Default: urn:cartoql:dataset:default. The store must hold
  *                     the data in this named graph in SPARQL mode.
- *   --config FILE    verax.json path (docs/10; explicit flags override file values)
+ *   --config FILE    cartoql.json path (docs/10; explicit flags override file values)
  *   --metrics off    disable ALL metric families (docs/10 toggle; default: all on)
  *   --port     N      bind port (default: ephemeral, printed on startup)
  */
@@ -28,7 +28,7 @@ function flag(name: string): string | undefined {
 const ontologyFile = flag('ontology')
 const shapesFile = flag('shapes')
 if (!ontologyFile || !shapesFile) {
-  console.error('usage: verax-gateway serve --ontology ONTO.ttl --shapes SHAPES.ttl --data DATA.ttl [--port N]')
+  console.error('usage: cartoql-gateway serve --ontology ONTO.ttl --shapes SHAPES.ttl --data DATA.ttl [--port N]')
   process.exit(2)
 }
 
@@ -55,7 +55,7 @@ const gateway = startGateway({
 })
 
 gateway.server.listen(port, () => {
-  console.log(`verax gateway listening on ${gateway.url}`)
+  console.log(`cartoql gateway listening on ${gateway.url}`)
   console.log(`  playground: ${gateway.url}/playground`)
   console.log(`  graphql:    POST ${gateway.url}/graphql`)
   console.log(`  health:     ${gateway.url}/health`)

@@ -1,4 +1,4 @@
-# Contributing to Verax
+# Contributing to CartoQL
 
 Thank you for considering a contribution. This is a **spec-first** project: the
 documents in [`docs/`](docs/) are the contract, and behavior changes land only after

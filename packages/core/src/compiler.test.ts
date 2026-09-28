@@ -12,7 +12,7 @@ const ontology = readFileSync(join(shardRoot, 'ontology.ttl'), 'utf-8')
 const shapes = readFileSync(join(shardRoot, 'shapes.ttl'), 'utf-8')
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core', {
-  datasetGraphs: ['urn:verax:shard:core'],
+  datasetGraphs: ['urn:cartoql:shard:core'],
 })
 const module_ = {
   moduleId: generated.moduleId,

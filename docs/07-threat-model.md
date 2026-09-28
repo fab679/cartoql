@@ -1,6 +1,6 @@
 # 07 — Threat Model & Security Posture
 
-Verax's value proposition is security compilation; the project's credibility therefore
+CartoQL's value proposition is security compilation; the project's credibility therefore
 rests on a published threat model, not on claims. This document is the development-time
 contract for security work; the public-facing artifacts are `SECURITY.md` (reporting)
 and the testkit's leak-probe corpus (proof).
@@ -20,7 +20,7 @@ clients (untrusted) ──► Gateway [parse → validate → directives → com
 ```
 
 **Trust levels:** client = untrusted · module sources = semi-trusted (data that shapes
-generated maps) · SPIs and backend = trusted (embedder-controlled) · Verax core = the
+generated maps) · SPIs and backend = trusted (embedder-controlled) · CartoQL core = the
 enforcement mechanism itself.
 
 ## Threat inventory (STRIDE-flavored, ranked)
@@ -41,7 +41,7 @@ bug because RDF query languages have rich string escape semantics.
 `SERVICE` endpoints are attacker-controllable server-side fetch axes if ever taken
 from a client.
 **Mitigation:** federation target endpoints are **static-config-only** (declared in
-`verax.json` exactly as [04](04-integration.md) states — clients can never supply them),
+`cartoql.json` exactly as [04](04-integration.md) states — clients can never supply them),
 with scheme allowlist (`https:` only by default), only resolvable via DNS at request
 time (no runtime redirects followed), per-endpoint rendered as declared class in health
 output. No `SERVICE BY <client-string>` of any kind in M1.
@@ -98,13 +98,13 @@ what would have been granted).
 Persisted query IDs are static, and a registered document goes stale against a security-fixed
 schema version.
 **Mitigation:** registrations pin `(schemaVersion, module-hash)`; re-registration against a newer schema version is the
-standard migration path; expired-past-overlap documents fail with `VX_ONTOLOGY_STALE`, never
+standard migration path; expired-past-overlap documents fail with `CQL_ONTOLOGY_STALE`, never
 silently serve under a newer schema.
 
 ### T10 — Backend store inference timing [since-M1]
 Silent expensive-query differential timing reveals facts (e.g. a permission-filtered
 query returning fast because a store precomputed restricted subsets).
-**Mitigation:** out of Verax's colocated control in highly-sensitive deployments —
+**Mitigation:** out of CartoQL's colocated control in highly-sensitive deployments —
 documented as a **deployment caveat**; recommend embedders co-locate the permission
 check with the store, or use result-latency padding as operational policy. Honest note:
 mitigating timing fully is beyond an overlay layer's guarantee set.

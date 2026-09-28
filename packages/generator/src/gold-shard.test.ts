@@ -46,8 +46,8 @@ describe('generator: mapping rules (docs/06)', () => {
   const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core')
   const byType = new Map(generated.types.map((t) => [t.name, t]))
 
-  it('D3: xsd:gYear maps to the VeraxGYear custom scalar', () => {
-    expect(generated.sdl).toContain('scalar VeraxGYear')
+  it('D3: xsd:gYear maps to the CartoQLGYear custom scalar', () => {
+    expect(generated.sdl).toContain('scalar CartoQLGYear')
     const person = byType.get('Person')!
     expect(person.fields.find((f) => f.name === 'name')?.typeRef).toBe('String!')
   })
@@ -65,7 +65,7 @@ describe('generator: mapping rules (docs/06)', () => {
     const inverse = publication.fields.find((f) => f.name === 'authoredInverse')
     expect(inverse).toBeDefined()
     expect(inverse?.inverse).toBe(true)
-    expect(inverse?.pathIri).toBe('https://verax.example/corpus/core#authored')
+    expect(inverse?.pathIri).toBe('https://cartoql.example/corpus/core#authored')
     // minCount 1, unbounded → non-null list
     expect(inverse?.typeRef).toBe('[Person!]!')
   })

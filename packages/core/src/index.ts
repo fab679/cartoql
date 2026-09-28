@@ -1,15 +1,15 @@
 /**
- * @verax/core — the compiler, algebra IR, directive registry, cost model,
+ * @cartoql/core — the compiler, algebra IR, directive registry, cost model,
  * and error-code contract.
  *
  * Status: M0 scaffold. The first real surfaces land with M1:
  *   - the algebra IR node types (ADR-1: portable JSON algebra)
  *   - the directive registry contract types (docs/03)
- *   - `VX_*` error-code constants re-exported for all packages
+ *   - `CQL_*` error-code constants re-exported for all packages
  */
 
 /** Administered identity of the compiled artifact family (remap policy, docs/01). */
-export const ERROR_PREFIX = 'VX' as const;
+export const ERROR_PREFIX = 'CQL' as const;
 
 /** Enumerate the versioned error codes (docs/03 Part II). */
 export const ERROR_CODES = [
@@ -27,7 +27,7 @@ export const ERROR_CODES = [
 export type ErrorCode = (typeof ERROR_CODES)[number] | `${typeof ERROR_PREFIX}_${string}`;
 
 /** Wire form of one error entry (branch on `code`, never on messages). */
-export interface VeraxErrorExtensions {
+export interface CartoQLErrorExtensions {
   code: `${typeof ERROR_PREFIX}_${ErrorCode}`;
   schemaVersion: string;
   planId?: string;

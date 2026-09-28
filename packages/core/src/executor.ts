@@ -1,5 +1,5 @@
 /**
- * @verax/core — executor-side shared contract: variable resolution, cursor
+ * @cartoql/core — executor-side shared contract: variable resolution, cursor
  * encoding, and the StoreAdapter SPI (docs/02 §4).
  *
  * The *reference adapter* (packages/adapters/reference) implements this SPI by
@@ -10,12 +10,12 @@
  */
 import { createHash } from "node:crypto";
 import { canonicalJson, type Binding, type Plan } from "./ir.js";
-import type { VeraxModule } from "./compiler.js";
+import type { CartoQLModule } from "./compiler.js";
 import type { PermissionView } from "./security.js";
 
 export class ExecutorError extends Error {
   constructor(message: string) {
-    super(`[@verax/executor] ${message}`);
+    super(`[@cartoql/executor] ${message}`);
     this.name = "ExecutorError";
   }
 }
@@ -55,7 +55,7 @@ export interface CursorPayload {
 }
 
 /** docs/06 D6: canonical ordering key is the entity IRI — cursors carry it explicitly. */
-export const ORDER_BY_IRI = "urn:verax:ordering:iri";
+export const ORDER_BY_IRI = "urn:cartoql:ordering:iri";
 
 /**
  * Guard + escape a scalar filter value into an RDF string-literal TERM.
@@ -119,7 +119,7 @@ export function decodeCursor(
 }
 
 /** One typed error entry: branch on extensions.code, never on message (docs/03 Part II). */
-export interface VeraxError {
+export interface CartoQLError {
   readonly message: string;
   readonly path?: string;
   readonly extensions: { readonly code: string };
@@ -128,7 +128,7 @@ export interface VeraxError {
 /** The shaped GraphQL response data for a plan — { data, errors } at the transport. */
 export interface ResponseData {
   readonly data: Record<string, unknown>;
-  readonly errors: readonly VeraxError[];
+  readonly errors: readonly CartoQLError[];
 }
 
 /**
@@ -147,7 +147,7 @@ export interface StoreAdapter {
   readonly conformance: "reference" | "L0" | "L1" | "L2";
   run(
     plan: Plan,
-    module: VeraxModule,
+    module: CartoQLModule,
     variables: ResolvedVariables,
     security?: SecurityContext,
   ): Promise<ResponseData>;

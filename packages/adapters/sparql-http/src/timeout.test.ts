@@ -16,7 +16,7 @@ const generated = generateSdl(
     shapes: readFileSync(join(shard, 'shapes.ttl'), 'utf-8'),
   },
   'corpus/shards/core',
-  { datasetGraphs: ['urn:verax:shard:core'] },
+  { datasetGraphs: ['urn:cartoql:shard:core'] },
 )
 const module_ = {
   moduleId: generated.moduleId,
@@ -43,7 +43,7 @@ describe('sparql-http: request timeout', () => {
       readFileSync(join(shard, 'documents/person-detail.graphql'), 'utf-8'),
       module_,
     )
-    await expect(adapter.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#person-ada' })).rejects.toThrow(
+    await expect(adapter.run(plan, module_, { iri: 'https://cartoql.example/corpus/core/data#person-ada' })).rejects.toThrow(
       /exceeded its 30ms budget/,
     )
   })

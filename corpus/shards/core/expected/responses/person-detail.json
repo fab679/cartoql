@@ -1,1 +1,1 @@
-{"response":{"data":{"person":{"name":"Ada Ionescu","worksFor":{"name":"Acme Research Institute"}}},"errors":[]},"variables":{"iri":"https://verax.example/corpus/core/data#person-ada"}}
+{"response":{"data":{"person":{"name":"Ada Ionescu","worksFor":{"name":"Acme Research Institute"}}},"errors":[]},"variables":{"iri":"https://cartoql.example/corpus/core/data#person-ada"}}

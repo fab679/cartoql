@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { AlgebraNode, ERROR_CODES, ERROR_PREFIX, VeraxErrorExtensions } from './index.js'
+import { AlgebraNode, ERROR_CODES, ERROR_PREFIX, CartoQLErrorExtensions } from './index.js'
 
 describe('core: error-code contract (docs/03 Part II)', () => {
-  it('exposes every spec table code with the VX_ prefix', () => {
+  it('exposes every spec table code with the CQL_ prefix', () => {
     for (const code of ERROR_CODES) {
-      expect(`${ERROR_PREFIX}_${code}`).toMatch(/^VX_[A-Z_]+$/)
+      expect(`${ERROR_PREFIX}_${code}`).toMatch(/^CQL_[A-Z_]+$/)
     }
   })
 
   it('wire form carries the mandatory extensions fields', () => {
-    const err: VeraxErrorExtensions = {
-      code: 'VX_PERMISSION_DENIED',
+    const err: CartoQLErrorExtensions = {
+      code: 'CQL_PERMISSION_DENIED',
       schemaVersion: 'v1',
       fieldPath: 'Document.body',
     }

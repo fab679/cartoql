@@ -2,13 +2,13 @@ SELECT DISTINCT ?v0_e ?v0_e_0_v
 WHERE {
   { SELECT ?v0_e
   WHERE {
-    GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Agent> }
+    GRAPH <urn:cartoql:shard:typing> { ?v0_e a <https://cartoql.example/corpus/typing#Agent> }
     FILTER(isIRI(?v0_e))
   }
   ORDER BY ?v0_e
   LIMIT 21 }
-  GRAPH <urn:verax:shard:typing> {
-  OPTIONAL { ?v0_e <https://verax.example/corpus/typing#name> ?v0_e_0_v }
+  GRAPH <urn:cartoql:shard:typing> {
+  OPTIONAL { ?v0_e <https://cartoql.example/corpus/typing#name> ?v0_e_0_v }
   }
 }
 ORDER BY ?v0_e

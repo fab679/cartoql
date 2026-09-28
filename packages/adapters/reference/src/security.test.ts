@@ -22,7 +22,7 @@ const data = readFileSync(join(shard, 'data.ttl'), 'utf-8')
 const stamps = JSON.parse(readFileSync(join(shard, 'stamps.json'), 'utf-8'))
 
 const generated = generateSdl({ ontology, shapes }, 'corpus/shards/sec', {
-  datasetGraphs: ['urn:verax:shard:sec'],
+  datasetGraphs: ['urn:cartoql:shard:sec'],
   stamps,
 })
 const module_ = {
@@ -57,7 +57,7 @@ describe('security corpus: reviewed snapshots (docs/09)', () => {
       {
         message: 'field Organization.salaryBudget requires authorization the principal does not hold',
         path: 'Organization.salaryBudget',
-        extensions: { code: 'VX_PERMISSION_DENIED' },
+        extensions: { code: 'CQL_PERMISSION_DENIED' },
       },
       expect.objectContaining({ path: 'Organization.salaryBudget' }),
       expect.objectContaining({ path: 'Organization.salaryBudget' }),
@@ -80,7 +80,7 @@ describe('security corpus: entity gating is existence-blind (docs/03 rule 3)', (
     const absent = await adapter.run(
       compileDocument(readFileSync(join(shard, 'documents/note-lookup.graphql'), 'utf-8'), module_),
       module_,
-      { iri: 'https://verax.example/corpus/sec/data#does-not-exist' },
+      { iri: 'https://cartoql.example/corpus/sec/data#does-not-exist' },
       BOB(),
     )
     expect(gated.data['sensitiveNote']).toBeNull()
@@ -122,7 +122,7 @@ describe('security corpus: @traversalScope — the existence-blind edge track (d
 
     // and the contrast, one document family away: salaryBudget denial is VISIBLE
     const orgs = await run('orgs.graphql', BOB())
-    expect(orgs.errors.map((e) => e.extensions.code)).toEqual(['VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED'])
+    expect(orgs.errors.map((e) => e.extensions.code)).toEqual(['CQL_PERMISSION_DENIED', 'CQL_PERMISSION_DENIED', 'CQL_PERMISSION_DENIED'])
   })
 
   it('entity visibility follows the entity into expansions: an allowed traversal still filters nested type-gated entities', async () => {

@@ -40,7 +40,7 @@ describe('budgets: rejection is pre-execution and typed', () => {
   it('cost over limit → BudgetError with metric + limit', () => {
     const plan = compile('query { people(first: 1) { edges { node { name } } } }')
     expect(() => enforceBudgets(plan, { maxCost: 0.1 })).toThrow(BudgetError)
-    expect(() => enforceBudgets(plan, { maxCost: 0.1 })).toThrow(/VX_QUERY_TOO_COMPLEX: plan cost/)
+    expect(() => enforceBudgets(plan, { maxCost: 0.1 })).toThrow(/CQL_QUERY_TOO_COMPLEX: plan cost/)
   })
 
   it('depth over limit rejects; defaults accept the corpus documents', () => {

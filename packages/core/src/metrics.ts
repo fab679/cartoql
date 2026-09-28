@@ -1,7 +1,7 @@
 /**
- * @verax/core — the observability contract's collector (docs/10).
+ * @cartoql/core — the observability contract's collector (docs/10).
  *
- * Prometheus naming with the `verax_` prefix; families togglable (zero-by-default
+ * Prometheus naming with the `cartoql_` prefix; families togglable (zero-by-default
  * collection stays negligible — a disabled family records nothing). Rendered in
  * the standard exposition format at GET /metrics.
  *

@@ -1,6 +1,6 @@
 # core shard shapes — the SHACL contract that seeds SDL generation (docs/02 §1)
-@prefix vcore:  <https://verax.example/corpus/core#> .
-@prefix vshape: <https://verax.example/corpus/core/shape#> .
+@prefix vcore:  <https://cartoql.example/corpus/core#> .
+@prefix vshape: <https://cartoql.example/corpus/core/shape#> .
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
 
 vshape:PersonShape a sh:NodeShape ;

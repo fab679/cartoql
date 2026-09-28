@@ -1,5 +1,5 @@
 {
-  "name": "@verax/testkit",
+  "name": "@cartoql/testkit",
   "version": "0.0.1",
   "description": "Corpus runners, leak probes, conformance doctor (M1/M2)",
   "type": "module",

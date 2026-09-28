@@ -1,10 +1,10 @@
-# @verax/generated — module: corpus/shards/core
+# @cartoql/generated — module: corpus/shards/core
 # Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
 
-scalar VeraxGYear
+scalar CartoQLGYear
 
 type Organization {
-  foundedYear: VeraxGYear
+  foundedYear: CartoQLGYear
   motto: String
   name: String!
 }
@@ -34,7 +34,7 @@ type PersonEdge {
 type Publication {
   authoredInverse: [Person!]!
   name: String!
-  year: VeraxGYear!
+  year: CartoQLGYear!
 }
 type PublicationConnection {
   edges: [PublicationEdge!]!

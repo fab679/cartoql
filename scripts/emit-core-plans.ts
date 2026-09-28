@@ -20,7 +20,7 @@ const shapes = readFileSync(join(shard, 'shapes.ttl'), 'utf-8')
 const generated = generateSdl(
   { ontology, shapes },
   'corpus/shards/core',
-  { datasetGraphs: ['urn:verax:shard:core'] },
+  { datasetGraphs: ['urn:cartoql:shard:core'] },
 )
 writeFileSync(join(shard, 'expected/sdl/core.map.json'), canonicalJson(generated.semanticMap))
 

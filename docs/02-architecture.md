@@ -3,7 +3,7 @@
 ## Topology
 
 ```
-┌─────────────────────────────────────── Verax Gateway ──────────────────────────────────┐
+┌─────────────────────────────────────── CartoQL Gateway ──────────────────────────────────┐
 │                                                                                          │
 │  SHACL shapes + ontology IRIs ──► [SDL GENERATOR] ──► versioned SDL sets                 │
 │                                        │  (module composition, deprecation scaffold)     │
@@ -78,7 +78,7 @@ into execution (no plugin is trusted with data access).
 
 ### 4. SPI surface (the OSS-ification seam)
 
-Verax core owns the *mechanics*; each embedder owns the *policy*:
+CartoQL core owns the *mechanics*; each embedder owns the *policy*:
 
 | SPI | Cb/shape | Default (standalone mode) |
 |---|---|---|
@@ -117,7 +117,7 @@ expressed as `graphSet` named-graph unions within one served schema.
 ## Repository layout (target code shape)
 
 ```
-verax/
+cartoql/
   packages/
     core/            compiler, algebra, directive registry, cost models, error codes
     generator/       SHACL/ontology → SDL, deprecation scaffolding
@@ -135,5 +135,5 @@ primitives, mature federation compatibility tooling, and the widest OSS-API-adop
 reach for a service meant to be embedded behind other stacks (embedder language
 doesn't matter for a gate-way sidecar — KMap, Python-based, consumes the service).
 
-No globals/ambient dependencies; `verax` error prefix and IRI namespace live behind
+No globals/ambient dependencies; `cartoql` error prefix and IRI namespace live behind
 a single exported constant, honoring the rename policy (01).

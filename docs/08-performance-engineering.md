@@ -81,7 +81,7 @@ Caches (all measured, all alerting-observable):
 permission view.** Result caching is **off by default**: for write-heavy or
 privacy-sensitive deployment defaults it's both wrong-dangerous and a value
 additive only in anchored-use read-only scenarios. The config for it exists so
-adopters can make the call, not because Verax defaults to it.
+adopters can make the call, not because CartoQL defaults to it.
 
 ## SLO targets (reference hardware: 8 vCPU/16 GB gateway, tier-L1 co-located store)
 
@@ -103,18 +103,18 @@ required before tagging.
 - In-flight request cap per store adapter type (default 64); requests beyond the cap
   are queued with `Retry-After` metadata surfaced through a typed error — never silently dropped
 - Algebra node cap (dynamically expands with maxDepth but bounded hard at 2,500 nodes
-  — beyond: `VX_QUERY_TOO_COMPLEX`)
+  — beyond: `CQL_QUERY_TOO_COMPLEX`)
 - Execution timeout scales with plan complexity, not one blunt number: default
   budget `min(30 s, cost × 10 ms)` — a documented constant, not an incidental value
 - Cancellation: when a client aborts, the gateway cancels the in-flight SPARQL request
   (adapter contract requirement — tier-2 adapters support native cancel; the default
   adapter falls back to connection close)
 
-## What Verax does *not* promise (documented limits)
+## What CartoQL does *not* promise (documented limits)
 
 - No latency guarantee across `SERVICE` federation boundaries — the SLO table is
   explicitly single-store; federated deployments schedule face their own store owners
-- No result freshness guarantees — the store is the truth; Verax adds zero freshness
+- No result freshness guarantees — the store is the truth; CartoQL adds zero freshness
   commitments beyond stale-view errors as spec'd
 - No back-pressure scaling promises between the gateway and non-cooperating stores
   (adapter tier-2 can add store-side improvements but the baseline is honest networking)

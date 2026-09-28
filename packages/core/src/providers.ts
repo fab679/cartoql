@@ -1,5 +1,5 @@
 /**
- * @verax/core — Path-2 resolver providers (docs/04): the production claims
+ * @cartoql/core — Path-2 resolver providers (docs/04): the production claims
  * sources behind the same PermissionResolver SPI the static fixture uses.
  *
  * Both read the request bearer credential through PrincipalContext.credentials —

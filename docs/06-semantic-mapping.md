@@ -28,7 +28,7 @@ at that level (surfaced instead through the generic fallback root `Entity`, see
 
 ### Blank nodes
 
-**Skolemize at generation using a deterministic scheme** (`urn:verax:skolem:{shape}:{stable-content-hash}`)
+**Skolemize at generation using a deterministic scheme** (`urn:cartoql:skolem:{shape}:{stable-content-hash}`)
 so the same blank node across requests yields the same IRI (stable cursors and
 pagination depend on this). Blank nodes are never exposed as opaque `null` ids and
 never auto-materialize as first-class types: they appear only as nested payload values
@@ -42,14 +42,14 @@ inexpressible (no root that returns them is generated).
 | string, plain literals | `String` | |
 | `rdf:langString` | per-language fields or `@lang` argument (below) | |
 | boolean | `Boolean` | |
-| integer, long, int, nonNegativeInteger… | `Int` if JS-safe; otherwise `BigInt`-backed `veraxBigint` custom scalar | the generator **must not** silently coerce out-of-range values |
+| integer, long, int, nonNegativeInteger… | `Int` if JS-safe; otherwise `BigInt`-backed `cartoqlBigint` custom scalar | the generator **must not** silently coerce out-of-range values |
 | decimal, double, float | `Decimal` custom scalar **serialized as string** + optional `numericFloat` variant | precision loss is data corruption in finance/ontology contexts; strings are the default, floats are opt-in per field |
-| date, dateTime, time, duration, gYear… | custom scalars (`veraxDate`, …) with strict round-trip ISO-8601 parsing | |
+| date, dateTime, time, duration, gYear… | custom scalars (`cartoqlDate`, …) with strict round-trip ISO-8601 parsing | |
 | `xsd:anyURI` / IRIs | scalar `IRI` (string) | distinguished because `@key` and hyperlink features require knowing a field is an entity reference |
 
 Property values that don't match the shape's declared datatype **fail the shape** and
 the field returns `null` (never a best-effort cast); mismatches surface through the
-health reporting channel (`VX_SHAPE_MISMATCH` is for cross-partition cases).
+health reporting channel (`CQL_SHAPE_MISMATCH` is for cross-partition cases).
 
 ### Language tags (`rdf:langString`)
 
@@ -57,7 +57,7 @@ A multilingual property generates:
 - by default: a single field returning the value under the **language-negotiation
   header** (`Accept-Language` style precedence: `?lang` argument > header > module
   default > `@none` fallback > any),
-- or, per shape annotation `sh-verax:exposeLanguages: true`: a field per language
+- or, per shape annotation `sh-cartoql:exposeLanguages: true`: a field per language
   (`labelEn`, `labelFr`, …) plus a map-style `labels` field.
 
 The chosen language of any resolved string rides in the field's scalar (not a
@@ -70,13 +70,13 @@ response `extensions` when field-level extensions are enabled for the operation.
 
 - A field exists per `sh:path` … with **one exception**: single-hop properties only.
   A `sh:path` with length > 1 is **not** auto-flattened — it gets a *generated closure
-  field* only when the shape author explicitly names it (`sh-verax:propertyChainField`),
+  field* only when the shape author explicitly names it (`sh-cartoql:propertyChainField`),
   and it lands as its own typed field (same cost and permission treatment as any hop).
 - **Inverse properties**: the generator emits reverse-traversal fields for any object
   property that another shape declares (e.g., `worksFor → worksHereEmployees`), named
-  from `sh-verax:inverseOf` when given, else a deterministic auto-name
+  from `sh-cartoql:inverseOf` when given, else a deterministic auto-name
   (`{property}Inverse`); auto-inverse generation is off by default (noise) and on by
-  shape-annotation (`sh-verax:generateInverse: true`).
+  shape-annotation (`sh-cartoql:generateInverse: true`).
 - **Multi-valued properties are lists by default** (`[X]!` outer non-null when
   `minCount ≥ 0`), because RDF properties are open-world: a single-typed field would
   silently drop values to satisfy GraphQL's shape.
@@ -104,11 +104,11 @@ Aggregate directives (`@totalCount` in parking lot) operate on the deduplicated 
   path in core builds a query by concatenation (static lint rule on the algebra
   serializer: string-interpolation in SPARQL positions = CI failure).
 - **Value whitelisting**: enum arguments compile to `IN` bindings over declared values.
-- **Argument coercion failure** → a single typed error `VX_INVALID_ARGUMENT`
+- **Argument coercion failure** → a single typed error `CQL_INVALID_ARGUMENT`
   (`extensions: { argumentPath }`); coercion never falls back to ignoring the argument.
 - **Limits**: all list-typed fields carry `first: Int` with a per-module default
-  (`sh-verax:defaultPageSize`, default 20) and server max(configurable, default 500);
-  `first > max` errors (`VX_QUERY_TOO_COMPLEX`), it does not silently pre-clip.
+  (`sh-cartoql:defaultPageSize`, default 20) and server max(configurable, default 500);
+  `first > max` errors (`CQL_QUERY_TOO_COMPLEX`), it does not silently pre-clip.
 - **Per-field argument limits**: max 8 typed arguments per field (default; configurable) —
   part of the complexity lint config.
 
@@ -122,9 +122,9 @@ mid-scroll, never mind concurrent queries):
 - **Cursor format** (opaque): base64 of canonical JSON `{orderByKey, lastValue,
   lastIRI, graphHash}`; decoding re-emits the exact query clause — the cursor *is*
   the rebind proof, tied to the **schemaVersion + permissionViewVersion**, so
-  a stale view's cursor fails (`VX_PERMISSION_STALE`), not silently returns different rows.
+  a stale view's cursor fails (`CQL_PERMISSION_STALE`), not silently returns different rows.
 - **Stable order** guarantee: a canonical ordering key is always injected when a field
-  is paginated — module default `sh-verax:orderKey` (property definition) or synthesized
+  is paginated — module default `sh-cartoql:orderKey` (property definition) or synthesized
   ordering key from `IRI`, so the same page-select traverses the same window. Additive
   ordering options come from `orderBy` argument over **indexed/default orderKey fields
   only** (simple properties, not unions — sorting must be plan-computable, and a
@@ -154,7 +154,7 @@ Standalone/undefined-shape entities are still reachable via:
 |---|---|---|---|
 | D1 | Blank nodes at root | **inexpressible** | no generated root returns them |
 | D2 | default page size | 20 | module override via shape annotation |
-| D3 | decimal serialization | **string** default | `verax-BigInt/Decimal` custom scalars |
+| D3 | decimal serialization | **string** default | `cartoql-BigInt/Decimal` custom scalars |
 | D4 | multi-typed resolution | specific-shape-wins → union fallback | warning on ambiguity, never silent |
 | D5 | auto-inverse fields | off by default | shape annotation opts in |
 | D6 | ordering guarantee | canonical key always injected | IRI tiebreaker default |

@@ -13,17 +13,17 @@ const alice = { principalId: 'alice' }
 const bob = { principalId: 'bob' }
 
 describe('kernel: evaluateConstraint — the single choke point (docs/03)', () => {
-  it('group membership allows; non-membership denies with VX_PERMISSION_DENIED', () => {
+  it('group membership allows; non-membership denies with CQL_PERMISSION_DENIED', () => {
     const hrView = { groups: new Set(['hr-comp']), viewVersion: 'v1' }
     expect(evaluateConstraint('group:hr-comp', hrView)).toEqual({ visible: true })
-    expect(evaluateConstraint('group:legal', hrView)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    expect(evaluateConstraint('group:legal', hrView)).toEqual({ visible: false, code: 'CQL_PERMISSION_DENIED' })
   })
 
-  it('fail-closed: unknown constraint kinds and malformed payloads → VX_SCOPE_UNRESOLVED, never ignored', () => {
+  it('fail-closed: unknown constraint kinds and malformed payloads → CQL_SCOPE_UNRESOLVED, never ignored', () => {
     const view = { groups: new Set(['hr-comp']), viewVersion: 'v1' }
-    expect(evaluateConstraint('group:', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
-    expect(evaluateConstraint('nonsense', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
-    expect(evaluateConstraint('bogus-kind:x', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
+    expect(evaluateConstraint('group:', view)).toEqual({ visible: false, code: 'CQL_SCOPE_UNRESOLVED' })
+    expect(evaluateConstraint('nonsense', view)).toEqual({ visible: false, code: 'CQL_SCOPE_UNRESOLVED' })
+    expect(evaluateConstraint('bogus-kind:x', view)).toEqual({ visible: false, code: 'CQL_SCOPE_UNRESOLVED' })
   })
 
   it('role: reads the PLATFORM claim channel — grants console powers, never group facts', () => {
@@ -31,9 +31,9 @@ describe('kernel: evaluateConstraint — the single choke point (docs/03)', () =
     expect(evaluateConstraint('role:reviewer', reviewer)).toEqual({ visible: true })
     // a role does not satisfy interest-group constraints (docs/03: platform
     // roles can never grant business visibility)
-    expect(evaluateConstraint('group:hr-comp', reviewer)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    expect(evaluateConstraint('group:hr-comp', reviewer)).toEqual({ visible: false, code: 'CQL_PERMISSION_DENIED' })
     const member = { groups: new Set<string>(), viewVersion: 'v1' } // no roles claim at all
-    expect(evaluateConstraint('role:reviewer', member)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    expect(evaluateConstraint('role:reviewer', member)).toEqual({ visible: false, code: 'CQL_PERMISSION_DENIED' })
   })
 
   it('allowAll is the open posture alone — it satisfies every constraint', () => {
@@ -69,16 +69,16 @@ describe('kernel: resolvers (docs/04 Path 2)', () => {
     }
     const view = await resolveView(exploding, bob)
     expect(view).toBe(FAIL_CLOSED_VIEW)
-    expect(evaluateConstraint('group:anything', view)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    expect(evaluateConstraint('group:anything', view)).toEqual({ visible: false, code: 'CQL_PERMISSION_DENIED' })
   })
 
   it('fail-closed view denies non-group constraints as unresolved', () => {
-    expect(evaluateConstraint('bogus-kind:x', FAIL_CLOSED_VIEW)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
+    expect(evaluateConstraint('bogus-kind:x', FAIL_CLOSED_VIEW)).toEqual({ visible: false, code: 'CQL_SCOPE_UNRESOLVED' })
   })
 })
 
 describe('compiler: registry directives are generator-stamped only (docs/03 rule 1)', () => {
-  it('client-supplied security directives reject the whole document with VX_DIRECTIVE_REJECTED', async () => {
+  it('client-supplied security directives reject the whole document with CQL_DIRECTIVE_REJECTED', async () => {
     const { compileDocument } = await import('./compiler.js')
     const { generateSdl } = await import('../../generator/src/index.js')
     const { buildSchema } = await import('graphql')
@@ -104,12 +104,12 @@ describe('compiler: registry directives are generator-stamped only (docs/03 rule
 
     const clientForged = 'query Q($iri: ID!) { person(iri: $iri) { name @requireGroup(group: "hr-comp") } }'
     expect(() => compileDocument(clientForged, module_)).toThrow(
-      /VX_DIRECTIVE_REJECTED: client documents may not supply security directives \(requireGroup\)/,
+      /CQL_DIRECTIVE_REJECTED: client documents may not supply security directives \(requireGroup\)/,
     )
 
     // and forged at the operation level — valid GraphQL syntax, still rejected:
     // the walk covers every Directive node graphql's visitor can reach
     const onOperation = 'query Q @requireGroup(group: "x") { person(iri: "https://example/p1") { name } }'
-    expect(() => compileDocument(onOperation, module_)).toThrow(/VX_DIRECTIVE_REJECTED/)
+    expect(() => compileDocument(onOperation, module_)).toThrow(/CQL_DIRECTIVE_REJECTED/)
   })
 })

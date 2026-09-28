@@ -1,5 +1,5 @@
 /**
- * @verax/core — algebra IR (ADR-1: portable JSON algebra).
+ * @cartoql/core — algebra IR (ADR-1: portable JSON algebra).
  *
  * The IR is the executable artifact family: the compiler emits IR, SPARQL is a
  * *projection* of it (produced by adapters), and every security property test

@@ -1,5 +1,5 @@
 /**
- * @verax/core — the compiler: GraphQL document + module → Plan (ADR-1 IR).
+ * @cartoql/core — the compiler: GraphQL document + module → Plan (ADR-1 IR).
  *
  * v0 scope (M1 slice 2), fail-loud on everything outside it:
  *  - queries only (no mutation surface exists in the platform, docs/03)
@@ -40,7 +40,7 @@ const FILTER_FACTOR_PER_ARG = 0.25
 
 export class CompilerError extends Error {
   constructor(message: string) {
-    super(`[@verax/compiler] ${message}`)
+    super(`[@cartoql/compiler] ${message}`)
     this.name = 'CompilerError'
   }
 }
@@ -73,7 +73,7 @@ export interface SemanticMap {
   }>
 }
 
-export interface VeraxModule {
+export interface CartoQLModule {
   readonly moduleId: string
   readonly schemaHash: string
   readonly schema: GraphQLSchema
@@ -95,9 +95,9 @@ export interface VeraxModule {
  * both support tickets and false confidence.
  */
 const REGISTRY_DIRECTIVES = new Set(['requireGroup', 'traversalScope', 'requireRole', 'hiddenUnless'])
-const VX_DIRECTIVE_REJECTED = 'VX_DIRECTIVE_REJECTED'
+const CQL_DIRECTIVE_REJECTED = 'CQL_DIRECTIVE_REJECTED'
 
-export function compileDocument(source: string, module: VeraxModule): Plan {
+export function compileDocument(source: string, module: CartoQLModule): Plan {
   let document: DocumentNode
   try {
     document = parse(source)
@@ -116,7 +116,7 @@ export function compileDocument(source: string, module: VeraxModule): Plan {
   })
   if (offending.size > 0) {
     throw new CompilerError(
-      `${VX_DIRECTIVE_REJECTED}: client documents may not supply security directives (${[...offending].sort().join(', ')})`,
+      `${CQL_DIRECTIVE_REJECTED}: client documents may not supply security directives (${[...offending].sort().join(', ')})`,
     )
   }
 
@@ -163,7 +163,7 @@ export function compileDocument(source: string, module: VeraxModule): Plan {
 }
 
 /** Recursive visitor over the request AST collecting registry directives (all node kinds). */
-function targetClassOf(module: VeraxModule, typeName: string): string {
+function targetClassOf(module: CartoQLModule, typeName: string): string {
   for (const root of Object.values(module.semanticMap.roots)) {
     if (root.typeName === typeName) return root.targetClass
   }
@@ -176,7 +176,7 @@ function targetClassOf(module: VeraxModule, typeName: string): string {
 function compileOneField(
   selection: FieldNode,
   typeName: string,
-  module: VeraxModule,
+  module: CartoQLModule,
   fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>,
 ): {
   field: string
@@ -357,7 +357,7 @@ function flattenSelections(
   return out
 }
 
-function compileRootField(field: FieldNode, module: VeraxModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode {
+function compileRootField(field: FieldNode, module: CartoQLModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode {
   const name = field.name.value
   if (name.startsWith('__')) throw new CompilerError(`system field ${name} is not plan-compilable in v0`)
 
@@ -418,7 +418,7 @@ function compileRootField(field: FieldNode, module: VeraxModule, fragments: Read
         key: mappedKey,
         path: mapped.pathIri,
         direction,
-        orderByKey: `urn:verax:ordering:field:${mappedKey}:${direction.toLowerCase()}`,
+        orderByKey: `urn:cartoql:ordering:field:${mappedKey}:${direction.toLowerCase()}`,
       }
       continue
     }
@@ -485,7 +485,7 @@ interface ConnectionTaxonomy {
   pageInfo: boolean
 }
 
-function compileEntityChildren(set: SelectionSetNode, typeName: string, module: VeraxModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode[] {
+function compileEntityChildren(set: SelectionSetNode, typeName: string, module: CartoQLModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode[] {
   // D4: selections under an interface-typed (or plain) entity may select typed
   // fragments over the hierarchy's implementers; those compile conditioned
   const implementers = module.semanticMap.hierarchy?.implementers[typeName]
@@ -507,7 +507,7 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
         kind: 'FieldExpansion',
         field: `${typeName}.__typename`,
         responseKey: '__typename',
-        path: 'urn:verax:computed:__typename',
+        path: 'urn:cartoql:computed:__typename',
         inverse: false,
         cardinality: 'single',
         itemType: { kind: 'class', iri: '' },
@@ -615,14 +615,14 @@ function directivesToConstraints(astNode: { directives?: readonly { name: { valu
   return out
 }
 
-function typeLevelConstraints(module: VeraxModule, typeName: string): string[] {
+function typeLevelConstraints(module: CartoQLModule, typeName: string): string[] {
   const type = module.schema.getType(typeName)
   const astNode = type?.astNode
   if (!astNode) return []
   return directivesToConstraints(astNode)
 }
 
-function fieldLevelConstraints(module: VeraxModule, typeName: string, fieldName: string): string[] {
+function fieldLevelConstraints(module: CartoQLModule, typeName: string, fieldName: string): string[] {
   const type = module.schema.getType(typeName)
   const field = type && 'getFields' in type ? type.getFields()[fieldName] : undefined
   if (!field?.astNode) return []

@@ -14,7 +14,7 @@ const ontologyFile = join(secShard, 'ontology.ttl')
 const shapesFile = join(secShard, 'shapes.ttl')
 const dataFile = join(secShard, 'data.ttl')
 
-const authDir = mkdtempSync(join(tmpdir(), 'verax-auth-'))
+const authDir = mkdtempSync(join(tmpdir(), 'cartoql-auth-'))
 const authFile = join(authDir, 'claims.json')
 writeFileSync(authFile, JSON.stringify({ alice: ['hr-comp', 'legal'] }))
 
@@ -24,7 +24,7 @@ function boot(auth: boolean) {
     shapesFile,
     dataFile,
     moduleId: 'corpus/shards/sec',
-    graphFlag: 'urn:verax:shard:sec',
+    graphFlag: 'urn:cartoql:shard:sec',
     stampsFile: join(secShard, 'stamps.json'),
     ...(auth ? { authFile } : {}),
   })
@@ -37,7 +37,7 @@ async function gql(url: string, query: string, principalId?: string, variables?:
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      ...(principalId ? { 'x-verax-principal': principalId } : {}),
+      ...(principalId ? { 'x-cartoql-principal': principalId } : {}),
     },
     body: JSON.stringify({ query, variables }),
   })
@@ -50,7 +50,7 @@ const NOTE = `query N($iri: ID!) { sensitiveNote(iri: $iri) { name noteOf { name
 describe('gateway: per-request security over HTTP (docs/07: agents run as the human)', () => {
   const g = boot(true)
 
-  it('field denial rides the standard GraphQL errors channel with VX_* codes', async () => {
+  it('field denial rides the standard GraphQL errors channel with CQL_* codes', async () => {
     const alice = await gql(g.url, ORGS, 'alice')
     expect(alice.body.errors).toHaveLength(0)
     const edges = ((alice.body.data['organizations'] as { edges: Array<{ node: { salaryBudget: string | null } }> }).edges)
@@ -60,19 +60,19 @@ describe('gateway: per-request security over HTTP (docs/07: agents run as the hu
     expect(bob.status).toBe(200)
     const bobEdges = ((bob.body.data['organizations'] as { edges: Array<{ node: { salaryBudget: string | null } }> }).edges)
     expect(bobEdges.map((e) => e.node.salaryBudget)).toEqual([null, null, null])
-    expect(bob.body.errors.map((e) => e.extensions?.code)).toEqual(['VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED'])
+    expect(bob.body.errors.map((e) => e.extensions?.code)).toEqual(['CQL_PERMISSION_DENIED', 'CQL_PERMISSION_DENIED', 'CQL_PERMISSION_DENIED'])
   })
 
   it('entity gating is existence-blind over HTTP: null/empty, zero error entries', async () => {
-    const bob = await gql(g.url, NOTE, 'bob', { iri: 'https://verax.example/corpus/sec/data#note-1' })
+    const bob = await gql(g.url, NOTE, 'bob', { iri: 'https://cartoql.example/corpus/sec/data#note-1' })
     expect(bob.body.data['sensitiveNote']).toBeNull()
     expect(bob.body.errors).toHaveLength(0)
-    const alice = await gql(g.url, NOTE, 'alice', { iri: 'https://verax.example/corpus/sec/data#note-1' })
+    const alice = await gql(g.url, NOTE, 'alice', { iri: 'https://cartoql.example/corpus/sec/data#note-1' })
     expect(alice.body.data['sensitiveNote']).toMatchObject({ name: 'Alpha audit remark' })
   })
 
   it('unknown principals are fail-closed, not open', async () => {
-    const stranger = await gql(g.url, NOTE, 'someone-never-provisioned', { iri: 'https://verax.example/corpus/sec/data#note-1' })
+    const stranger = await gql(g.url, NOTE, 'someone-never-provisioned', { iri: 'https://cartoql.example/corpus/sec/data#note-1' })
     expect(stranger.body.data['sensitiveNote']).toBeNull()
     expect(stranger.body.errors).toHaveLength(0)
   })

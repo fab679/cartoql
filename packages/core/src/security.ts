@@ -1,5 +1,5 @@
 /**
- * @verax/core — the permission kernel v1 (M2 slice 1; docs/03 enforcement rules).
+ * @cartoql/core — the permission kernel v1 (M2 slice 1; docs/03 enforcement rules).
  *
  * Architecture stance, straight from the spec: **everything enters through one
  * channel**. Directives compile into constraint IDs on IR nodes; at request time
@@ -19,7 +19,7 @@
  *
  * Fail-closed is a code path, not a convention: unknown constraint kinds,
  * malformed constraints, and failing resolvers all resolve to denial
- * (`VX_SCOPE_UNRESOLVED` / FAIL_CLOSED_VIEW), never to permissiveness.
+ * (`CQL_SCOPE_UNRESOLVED` / FAIL_CLOSED_VIEW), never to permissiveness.
  */
 
 /** Per-request credential payload, threaded by the transport (never client-set). */
@@ -64,10 +64,10 @@ export const FAIL_CLOSED_VIEW: PermissionView = Object.freeze({
   viewVersion: 'fail-closed',
 })
 
-/** Machine-readable outcomes (docs/03 Part II contract, VX_* codes). */
+/** Machine-readable outcomes (docs/03 Part II contract, CQL_* codes). */
 export type ConstraintDecision =
   | { readonly visible: true }
-  | { readonly visible: false; readonly code: 'VX_PERMISSION_DENIED' | 'VX_SCOPE_UNRESOLVED' }
+  | { readonly visible: false; readonly code: 'CQL_PERMISSION_DENIED' | 'CQL_SCOPE_UNRESOLVED' }
 
 /**
  * Constraint kinds the kernel understands. `group:` backs @requireGroup (the
@@ -83,7 +83,7 @@ export type Constraint = `group:${string}` | `traversal:${string}`
  * Evaluate one constraint against one view — the single choke point for every
  * visibility decision in the system. Adapters and the compiler have no other say.
  *
- * Fail-closed: unknown kinds and malformed payloads → VX_SCOPE_UNRESOLVED (denied).
+ * Fail-closed: unknown kinds and malformed payloads → CQL_SCOPE_UNRESOLVED (denied).
  */
 const MEMBER_PREFIXES = new Set(['group:', 'traversal:'])
 /** role: constraints read view.roles — the platform-claims channel (docs/03). */
@@ -109,14 +109,14 @@ export function evaluateConstraint(constraint: string, view: PermissionView): Co
   if (MEMBER_PREFIXES.has(kind) && value !== '') {
     return view.groups.has(value)
       ? { visible: true }
-      : { visible: false, code: 'VX_PERMISSION_DENIED' }
+      : { visible: false, code: 'CQL_PERMISSION_DENIED' }
   }
   if (ROLE_PREFIXES.has(kind) && value !== '') {
     return (view.roles?.has(value) ?? false)
       ? { visible: true }
-      : { visible: false, code: 'VX_PERMISSION_DENIED' }
+      : { visible: false, code: 'CQL_PERMISSION_DENIED' }
   }
-  return { visible: false, code: 'VX_SCOPE_UNRESOLVED' } // fail closed on unknown kinds
+  return { visible: false, code: 'CQL_SCOPE_UNRESOLVED' } // fail closed on unknown kinds
 }
 
 /**

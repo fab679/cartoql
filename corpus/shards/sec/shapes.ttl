@@ -1,7 +1,7 @@
 # sec shard shapes — salaryBudget stamped @requireGroup("hr-comp"), SensitiveNote
 # type-stamped @requireGroup("legal") (see stamps.json)
-@prefix vsec:  <https://verax.example/corpus/sec#> .
-@prefix vshape: <https://verax.example/corpus/sec/shape#> .
+@prefix vsec:  <https://cartoql.example/corpus/sec#> .
+@prefix vshape: <https://cartoql.example/corpus/sec/shape#> .
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
 
 vshape:OrganizationShape a sh:NodeShape ;

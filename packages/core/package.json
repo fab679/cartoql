@@ -1,5 +1,5 @@
 {
-  "name": "@verax/core",
+  "name": "@cartoql/core",
   "version": "0.0.1",
   "description": "Compiler, algebra IR, directive registry, error codes",
   "type": "module",

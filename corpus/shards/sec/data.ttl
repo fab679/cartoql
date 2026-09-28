@@ -1,6 +1,6 @@
 # sec shard data — budget-bearing and budget-less orgs; two sensitive notes
-@prefix vsec: <https://verax.example/corpus/sec#> .
-@prefix vdata: <https://verax.example/corpus/sec/data#> .
+@prefix vsec: <https://cartoql.example/corpus/sec#> .
+@prefix vdata: <https://cartoql.example/corpus/sec/data#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 vdata:org-alpha a vsec:Organization ; vsec:name "Alpha GmbH" ; vsec:salaryBudget "1200000"^^xsd:decimal .

@@ -1,5 +1,5 @@
 {
-  "name": "@verax/generator",
+  "name": "@cartoql/generator",
   "version": "0.0.1",
   "description": "SHACL/ontology \u2192 SDL generation (M1)",
   "type": "module",

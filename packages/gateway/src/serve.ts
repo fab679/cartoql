@@ -1,12 +1,12 @@
 /**
- * @verax/gateway — `serve`: the HTTP surface (docs/04 Path 1).
+ * @cartoql/gateway — `serve`: the HTTP surface (docs/04 Path 1).
  *
  * v0 runtime modes:
  *  - `--data file.ttl` → reference adapter (in-memory store) — the zero-store
  *    quickstart path; fully green end to end
  *  - `--sparql URL` → SPARQL 1.1 HTTP adapter, live end to end — L0
  *    response-equivalence proven against Oxigraph via the parity suite
- *    (`VERAX_TEST_SPARQL_ENDPOINT`, packages/adapters/sparql-http/parity.test.ts)
+ *    (`CARTOQL_TEST_SPARQL_ENDPOINT`, packages/adapters/sparql-http/parity.test.ts)
  *
  * Endpoints:
  *  - POST /graphql      { query, variables } → compile+execute, { data, errors }
@@ -14,14 +14,14 @@
  *  - GET  /health       operator posture: adapter, schema hash, SDL version
  *
  * v0 errors carry `extensions.name` (CompilerError/ExecutorError); the typed
- * `VX_*` error-code surface (docs/03 Part II) lands with M2's directive pass —
+ * `CQL_*` error-code surface (docs/03 Part II) lands with M2's directive pass —
  * the gateway never invents codes before the contract does.
  */
 import { readFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
 import { buildSchema, parse, validate } from 'graphql'
 import { generateSdl } from '../../generator/src/index.js'
-import { compileDocument, CompilerError, type VeraxModule } from '../../core/src/compiler.js'
+import { compileDocument, CompilerError, type CartoQLModule } from '../../core/src/compiler.js'
 import { ExecutorError, type ResponseData, type SecurityContext } from '../../core/src/executor.js'
 import {
   OpenResolver,
@@ -32,7 +32,7 @@ import {
 import { jwtGroupsResolver } from '../../core/src/providers.js'
 import { BudgetError, enforceBudgets, DEFAULT_BUDGETS, type BudgetLimits } from '../../core/src/budgets.js'
 import type { Plan } from '../../core/src/ir.js'
-import { loadConfig, type VeraxConfig } from '../../core/src/config.js'
+import { loadConfig, type CartoQLConfig } from '../../core/src/config.js'
 import { planDepth, planNodeCount } from '../../core/src/ir.js'
 import { Metrics, logLine, type MetricFamily } from '../../core/src/metrics.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
@@ -66,9 +66,9 @@ export interface ServeOptions {
    * gateway serves an unstamped schema — open by module, not by accident.
    */
   stampsFile?: string
-  /** Budget gates (docs/08; threat T3's mitigation, now live): VX_QUERY_TOO_COMPLEX. */
+  /** Budget gates (docs/08; threat T3's mitigation, now live): CQL_QUERY_TOO_COMPLEX. */
   budgets?: BudgetLimits
-  /** verax.json path (docs/10): file values apply, explicit flags override. */
+  /** cartoql.json path (docs/10): file values apply, explicit flags override. */
   configFile?: string
   /** Metrics families to record (docs/10: absent = never recorded). */
   metricsFamilies?: readonly MetricFamily[] | null
@@ -88,9 +88,9 @@ export function startGateway(options: ServeOptions): RunningGateway {
     throw new Error('no store configured: pass --data file.ttl (reference mode) or --sparql URL (once landing)')
   }
 
-  // verax.json loads AT BOOT (docs/10: operator surprises are support debt):
+  // cartoql.json loads AT BOOT (docs/10: operator surprises are support debt):
   // invalid files refuse the process, not the request
-  let fileConfig: VeraxConfig = {}
+  let fileConfig: CartoQLConfig = {}
   if (options.configFile !== undefined) {
     fileConfig = loadConfig(readFileSync(options.configFile, 'utf-8'))
   }
@@ -128,7 +128,7 @@ export function startGateway(options: ServeOptions): RunningGateway {
       : options.authFile
         ? new StaticResolver(JSON.parse(readFileSync(options.authFile, 'utf-8')) as Record<string, string[]>)
         : new OpenResolver()
-  const module: VeraxModule = {
+  const module: CartoQLModule = {
     moduleId: generated.moduleId,
     schemaHash: generated.schemaHash,
     schema: buildSchema(generated.sdl),
@@ -280,8 +280,8 @@ export function startGateway(options: ServeOptions): RunningGateway {
         }
         // agents run as the human: the principal is per-request (header), the
         // view resolves once per request and failures collapse fail-closed
-        const principalId = typeof req.headers['x-verax-principal'] === 'string'
-          ? (req.headers['x-verax-principal'] as string)
+        const principalId = typeof req.headers['x-cartoql-principal'] === 'string'
+          ? (req.headers['x-cartoql-principal'] as string)
           : 'anonymous'
         // bearer credentials ride PrincipalContext for jwt/oidc resolvers (docs/04)
         const authz = typeof req.headers['authorization'] === 'string'
@@ -345,10 +345,10 @@ function normalizeVariables(raw: unknown): Record<string, string | number | bool
 
 function playgroundHtml(): string {
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>verax playground</title>
+<html lang="en"><head><meta charset="utf-8"><title>cartoql playground</title>
 <style>body{font-family:ui-monospace,monospace;max-width:820px;margin:2rem auto;padding:0 1rem}
 textarea{width:100%;height:11rem}pre{background:#111;color:#eee;padding:1rem;overflow:auto}</style>
-</head><body><h1>verax playground</h1>
+</head><body><h1>cartoql playground</h1>
 <p>POST a GraphQL query with variables (scalars only) to <code>/graphql</code>.</p>
 <p><label>variables (JSON):</label><br><input id="vars" size="60" value='{"iri": "…"}' /></p>
 <p><textarea id="q"></textarea></p>

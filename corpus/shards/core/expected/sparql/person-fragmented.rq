@@ -1,15 +1,15 @@
 SELECT DISTINCT ?v0_e ?v0_e_0_v ?v0_e_1_v ?v0_e_1 ?v0_e_1_0_v ?v0_e_2_v ?v0_e_2 ?v0_e_2_0_v
 WHERE {
-  GRAPH <urn:verax:shard:core> {
-  ?v0_e a <https://verax.example/corpus/core#Person> .
-  OPTIONAL { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_0_v }
-  OPTIONAL { ?v0_e <https://verax.example/corpus/core#worksFor> ?v0_e_1 .
+  GRAPH <urn:cartoql:shard:core> {
+  ?v0_e a <https://cartoql.example/corpus/core#Person> .
+  OPTIONAL { ?v0_e <https://cartoql.example/corpus/core#name> ?v0_e_0_v }
+  OPTIONAL { ?v0_e <https://cartoql.example/corpus/core#worksFor> ?v0_e_1 .
     FILTER(isIRI(?v0_e_1))
-  OPTIONAL { ?v0_e_1 <https://verax.example/corpus/core#name> ?v0_e_1_0_v }
+  OPTIONAL { ?v0_e_1 <https://cartoql.example/corpus/core#name> ?v0_e_1_0_v }
   }
-  OPTIONAL { ?v0_e <https://verax.example/corpus/core#authored> ?v0_e_2 .
+  OPTIONAL { ?v0_e <https://cartoql.example/corpus/core#authored> ?v0_e_2 .
     FILTER(isIRI(?v0_e_2))
-  OPTIONAL { ?v0_e_2 <https://verax.example/corpus/core#name> ?v0_e_2_0_v }
+  OPTIONAL { ?v0_e_2 <https://cartoql.example/corpus/core#name> ?v0_e_2_0_v }
   }
   }
 }

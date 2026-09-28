@@ -15,7 +15,7 @@ their SPARQL store today.
 
 ## M1 — Universal GraphQL endpoint (the "anybody can use it" release)
 
-**Goal:** `npx verax-gateway serve --sparql … --shapes …` works against any SPARQL
+**Goal:** `npx cartoql-gateway serve --sparql … --shapes …` works against any SPARQL
 1.1 endpoint, zero security config.
 
 - SHACL → SDL generator (module composition, prefix handling, enum/list mapping,
@@ -42,13 +42,13 @@ fuzz suite seeding from [06](06-semantic-mapping.md) D7 rules.
 - Directive registry v1 implementation (`@scope`, `@traversalScope`, `@requireGroup`,
   `@requireRole`, `@graphSet`, `@redactWith`, `@maxDepth`, `@budget`)
 - Security stamping pipeline (generator-time, from stamping config), rejection of
-  client-supplied registry directives (`VX_DIRECTIVE_REJECTED`)
+  client-supplied registry directives (`CQL_DIRECTIVE_REJECTED`)
 - Monotonic-constraint compiler invariants + two-track failure semantics
   (visible denial vs. existence-blind hiding) — the security-critical work; heavy
   contract-test emphasis (negative probes, probe-blindness fixtures, cost attacks)
 - Built-in resolvers: `open`, `jwt-groups`, `oidc-introspect`, `file`
 - Plan cache keyed `(schemaVersion, documentShape, permissionViewVersion)`
-- Permission-fixture generator (`verax testkit --emit-fixtures`) — embedded
+- Permission-fixture generator (`cartoql testkit --emit-fixtures`) — embedded
   platforms start their security tests from generated fixtures
 
 **Done when:** the enforced-fixture suite passes against a reference "leaky" store
@@ -90,5 +90,5 @@ compiler lands without findings above medium.
 - M2: at least one external deployment powering ACL-sensitive data
 - Either: someone contributes a `StoreAdapter` for a store we didn't test — the
   adapter tier contract is doing its job
-- KMap integration upgrade cost per Verax minor release ≈ an afternoon (the
+- KMap integration upgrade cost per CartoQL minor release ≈ an afternoon (the
   SPI discipline is working)

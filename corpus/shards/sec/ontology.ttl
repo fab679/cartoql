@@ -1,5 +1,5 @@
 # sec shard ontology — field-gated and type-gated visibility (M2 slice 1 fixtures)
-@prefix vsec: <https://verax.example/corpus/sec#> .
+@prefix vsec: <https://cartoql.example/corpus/sec#> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .

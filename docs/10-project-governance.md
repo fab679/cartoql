@@ -55,7 +55,7 @@ and any deviation from "single execution artifact."
 
 Instrumented in core, exposed at `/metrics` (Prometheus naming) + structured logs:
 
-| Metric family | Names (prefix `verax_`) | Notes |
+| Metric family | Names (prefix `cartoql_`) | Notes |
 |---|---|---|
 | Request | `gateway_requests_total{surface,code}`, `gateway_request_duration_seconds{surface}` | surface ∈ {graphql, persisted, federation-rep} |
 | Compile | `compile_duration_seconds`, `compile_cost_total`, `compile_rejected_total{reason}` | cost distribution = budget tuning data |
@@ -71,7 +71,7 @@ Metrics can be toggled per family by config; if any metric's runtime cost proves
 non-negligible, it ships with an off switch (zero-by-default cost, not zero-by-default
 visibility).
 
-## Config reference (`verax.json`) — schema-owned
+## Config reference (`cartoql.json`) — schema-owned
 
 The config file is versioned JSON-Schema (`packages/gateway/config.schema.json`);
 docs list it as examples. Config sections:
@@ -84,11 +84,11 @@ budgets              defaultPageSize, per-field arg cap, cost-model schema versi
                      algebra node cap, timeout formula constants
 caching              plan cache on/off + size, result cache (off) + policy
 observability        metrics toggles, log verbosity
-protocol-overrides   overlapWindowMonths, code prefix (VX_* → embedder prefix)
+protocol-overrides   overlapWindowMonths, code prefix (CQL_* → embedder prefix)
 ```
 
 Rule: **no behavior that isn't in config or SDL** — no hidden env-var semantics
-beyond `VERAX_*` connection basics (endpoint, port, log level), which are themselves
+beyond `CARTOQL_*` connection basics (endpoint, port, log level), which are themselves
 documented. Operator surprises are support debt.
 
 ## Documentation discipline

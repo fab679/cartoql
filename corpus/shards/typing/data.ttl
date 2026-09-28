@@ -1,6 +1,6 @@
 # typing shard data: agents carry BOTH the Agent typing and their concrete class
-@prefix vtyp: <https://verax.example/corpus/typing#> .
-@prefix vdata: <https://verax.example/corpus/typing/data#> .
+@prefix vtyp: <https://cartoql.example/corpus/typing#> .
+@prefix vdata: <https://cartoql.example/corpus/typing/data#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 

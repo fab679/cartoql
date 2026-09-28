@@ -17,11 +17,11 @@
 | **Conformance level (L0/L1/L2)** | adapter certification: compatible / plan-introspecting / native-optimized — from [09](09-testing-conformance.md) |
 | **Cost model** | the versioned formula + constants behind `@budget` and `@maxDepth` ([08](08-performance-engineering.md)) |
 | **`SERVICE` federation** | SPARQL-endpoint federation via the `SERVICE` clause, from a static config allowlist (never client-supplied) |
-| **Federation representative** | a subgraph request carrying entity representations (Apollo-federation Mode A); verax requires forwarded auth and gets existence-blind semantics |
+| **Federation representative** | a subgraph request carrying entity representations (Apollo-federation Mode A); cartoql requires forwarded auth and gets existence-blind semantics |
 | **Persisted query** | a client-registered document, hashed and pinned to a schema version; the production execution path |
 | **Generic graph probe** | the shape-independent fallback field (root `entity`) for entities lacking covering shapes — scope- and cost-checked like any root |
 | **Skolem IRIs** | deterministic IRIs minted for blank nodes so cursors and caching stay stable |
 | **SPI** | the four embedder interfaces: `PermissionResolver`, `StoreAdapter`, `DocumentSourceResolver`, `ProvenanceModel` |
 | **Standing graph constraint** | every algebra node carries an explicit named-graph constraint (D10) — there is no implicit "whatever graph" |
 | **Parking lot** | the [03](03-directive-spec.md) table where proposed directives wait for leak analysis, cost semantics, and a deprecation path before entering the registry |
-| **`VX_*`** | the error-code prefix (remappable by embedders, e.g. `KM_*`); codes are the contract, messages are logs |
+| **`CQL_*`** | the error-code prefix (remappable by embedders, e.g. `KM_*`); codes are the contract, messages are logs |
