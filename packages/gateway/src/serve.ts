@@ -4,9 +4,9 @@
  * v0 runtime modes:
  *  - `--data file.ttl` → reference adapter (in-memory store) — the zero-store
  *    quickstart path; fully green end to end
- *  - `--sparql URL` → SPARQL 1.1 HTTP adapter — projection ships (slice 4);
- *    HTTP execution + response assembly are the next slice, so this mode
- *    refuses honestly with a clear error instead of pretending
+ *  - `--sparql URL` → SPARQL 1.1 HTTP adapter, live end to end — L0
+ *    response-equivalence proven against Oxigraph via the parity suite
+ *    (`VERAX_TEST_SPARQL_ENDPOINT`, packages/adapters/sparql-http/parity.test.ts)
  *
  * Endpoints:
  *  - POST /graphql      { query, variables } → compile+execute, { data, errors }
@@ -24,6 +24,7 @@ import { generateSdl } from '../../generator/src/index.js'
 import { compileDocument, CompilerError, type VeraxModule } from '../../core/src/compiler.js'
 import { ExecutorError } from '../../core/src/executor.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
+import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
 
 export interface ServeOptions {
   ontologyFile: string
@@ -32,6 +33,10 @@ export interface ServeOptions {
   sparqlEndpoint?: string
   port?: number
   moduleId?: string
+  /** D10: the executed module's explicit graph scope. Must match where the store holds the data. */
+  datasetGraphs?: readonly string[]
+  /** CLI convenience: single --graph IRI fills datasetGraphs. */
+  graphFlag?: string
 }
 
 export interface RunningGateway {
@@ -50,9 +55,11 @@ export function startGateway(options: ServeOptions): RunningGateway {
 
   const ontology = readFileSync(options.ontologyFile, 'utf-8')
   const shapes = readFileSync(options.shapesFile, 'utf-8')
+  const datasetGraphs = options.datasetGraphs ?? (options.graphFlag ? [options.graphFlag] : undefined)
   const generated = generateSdl(
     { ontology, shapes },
     options.moduleId ?? 'module',
+    datasetGraphs ? { datasetGraphs } : {},
   )
   const module: VeraxModule = {
     moduleId: generated.moduleId,
@@ -69,11 +76,11 @@ export function startGateway(options: ServeOptions): RunningGateway {
     adapterName = `reference (${options.dataFile})`
     run = (plan, vars) => adapter.run(plan, module, vars)
   } else {
-    // Honest refusal until slice 5's executor ships — see module doc.
-    throw new Error(
-      `--sparql is wired for projection only so far; SPARQL 1.1 HTTP execution lands with the next slice. ` +
-        `Run with --data file.ttl (reference mode) in the meantime.`,
-    )
+    // SPARQL mode: live since the parity suite — protocol/VALUES transports are
+    // auto-selected against the endpoint (docs/09 L0 parity, live-tested on Oxigraph).
+    const adapter = new SparqlHttpAdapter({ endpoint: options.sparqlEndpoint! })
+    adapterName = `sparql-http (${options.sparqlEndpoint})`
+    run = (plan, vars) => adapter.run(plan, module, vars)
   }
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {

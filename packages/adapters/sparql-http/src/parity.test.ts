@@ -1,0 +1,103 @@
+/**
+ * L0 parity suite (docs/09): the SPARQL HTTP adapter must be response-equivalent
+ * to the reference adapter over the gold shard — run when
+ * VERAX_TEST_SPARQL_ENDPOINT points at a live SPARQL 1.1 endpoint that has the
+ * shard loaded into named graph `urn:verax:shard:core`.
+ *
+ * Skipped with a visible log otherwise (CI has no store; the projection
+ * snapshots and reference suite still run).
+ *
+ * Live-tested against Oxigraph 0.5.10 — which ignores SPARQL 1.1 Protocol
+ * variable bindings, exercising the VALUES fallback transport end to end.
+ */
+import { describe, expect, it, beforeAll } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { buildSchema } from 'graphql'
+import { generateSdl } from '../../../generator/src/index.js'
+import { compileDocument } from '../../../core/src/compiler.js'
+import { ReferenceAdapter } from '../../reference/src/index.js'
+import { probeProtocolBinding, SparqlHttpAdapter } from './index.js'
+
+const endpoint = process.env['VERAX_TEST_SPARQL_ENDPOINT']
+
+const shardRoot = fileURLToPath(new URL('../../../../corpus/shards/core/', import.meta.url))
+const ontology = readFileSync(join(shardRoot, 'ontology.ttl'), 'utf-8')
+const shapes = readFileSync(join(shardRoot, 'shapes.ttl'), 'utf-8')
+const data = readFileSync(join(shardRoot, 'data.ttl'), 'utf-8')
+
+const generated = generateSdl({ ontology, shapes }, 'corpus/shards/core', {
+  datasetGraphs: ['urn:verax:shard:core'],
+})
+const module_ = {
+  moduleId: generated.moduleId,
+  schemaHash: generated.schemaHash,
+  schema: buildSchema(generated.sdl),
+  semanticMap: generated.semanticMap,
+  datasetGraphs: generated.datasetGraphs,
+}
+const reference = ReferenceAdapter.fromTurtle(data, module_.datasetGraphs)
+
+const docNames = readdirScan(join(shardRoot, 'documents'))
+function readdirScan(dir: string): string[] {
+  return readdirSync(dir).filter((f) => f.endsWith('.graphql')).sort()
+}
+
+const suite = describe.skipIf(!endpoint)('L0 parity: sparql-http vs reference (live Oxigraph)', () => {
+  let adapter: SparqlHttpAdapter
+
+  beforeAll(async () => {
+    adapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+  })
+
+  it.each(docNames)('%s: response-equivalent to the reference adapter', async (name) => {
+    const source = readFileSync(join(shardRoot, 'documents', name), 'utf-8')
+    const variables = JSON.parse(readFileSync(join(shardRoot, 'documents', name.replace(/\.graphql$/, '.vars.json')), 'utf-8'))
+    const plan = compileDocument(source, module_)
+    const expected = await reference.run(plan, module_, variables)
+    const actual = await adapter.run(plan, module_, variables)
+    expect(actual.data).toEqual(expected.data) // deep response-equivalence, cursors included
+  })
+
+  it('page-through parity: identical entity sequence and pageInfo transitions', async () => {
+    const pageQuery = 'query Page($first: Int, $after: String) { people(first: $first, after: $after) { edges { node { name } cursor } pageInfo { hasNextPage endCursor } } }'
+    const paginate = async (adapter: { run: (plan: ReturnType<typeof compileDocument>, m: typeof module_, v: Record<string, string | number | null>) => Promise<{ data: Record<string, unknown> }> }) => {
+      const names: string[] = []
+      let after: string | null = null
+      let hasNext = true
+      while (hasNext) {
+        const res = await adapter.run(compileDocument(pageQuery, module_), module_, { first: 2, after })
+        const conn = res.data['people'] as { edges: Array<{ node: { name: string } }>; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+        names.push(...conn.edges.map((e) => e.node.name))
+        hasNext = conn.pageInfo.hasNextPage
+        after = conn.pageInfo.endCursor
+      }
+      return names
+    }
+    expect(await paginate(adapter)).toEqual(await paginate(reference))
+    expect(await paginate(adapter)).toEqual(['Ada Ionescu', 'Brin Okafor', 'Cleo Marchetti', 'Dov Lindqvist', 'Emi Sato'])
+  })
+
+  it('absent entity: null, zero errors — same shape as reference', async () => {
+    const source = readFileSync(join(shardRoot, 'documents/person-detail.graphql'), 'utf-8')
+    const plan = compileDocument(source, module_)
+    const actual = await adapter.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#nope' })
+    const expected = await reference.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#nope' })
+    expect(actual.data['person']).toBeNull()
+    expect(actual.data).toEqual(expected.data)
+  })
+})
+
+runWhen(endpoint, async () => {
+  // capability log — visible in test output, documents which transport ran
+  const honors = await probeProtocolBinding(endpoint!)
+  if (!honors) {
+    console.log(`[parity] endpoint ignores SPARQL protocol variable bindings — VALUES fallback transport exercised`)
+  }
+})
+
+function runWhen(cond: string | undefined, fn: () => unknown): void {
+  if (cond) void fn()
+}
+void suite

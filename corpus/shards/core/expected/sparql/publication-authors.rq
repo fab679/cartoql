@@ -4,10 +4,10 @@ WHERE {
   ?v0_e a <https://verax.example/corpus/core#Publication> .
   OPTIONAL { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_0_v }
   OPTIONAL { ?v0_e ^<https://verax.example/corpus/core#authored> ?v0_e_1 .
-   OPTIONAL { ?v0_e_1 <https://verax.example/corpus/core#name> ?v0_e_1_0_v }
-   OPTIONAL { ?v0_e_1 <https://verax.example/corpus/core#worksFor> ?v0_e_1_1 .
-    OPTIONAL { ?v0_e_1_1 <https://verax.example/corpus/core#name> ?v0_e_1_1_0_v }
-   }
+  OPTIONAL { ?v0_e_1 <https://verax.example/corpus/core#name> ?v0_e_1_0_v }
+  OPTIONAL { ?v0_e_1 <https://verax.example/corpus/core#worksFor> ?v0_e_1_1 .
+  OPTIONAL { ?v0_e_1_1 <https://verax.example/corpus/core#name> ?v0_e_1_1_0_v }
+  }
   }
   }
 }

@@ -73,9 +73,22 @@ curl -s -X POST localhost:4137/graphql -H 'content-type: application/json' -d '{
 #   "authoredInverse":[{"name":"Ada Ionescu"},{"name":"Cleo Marchetti"}]}},"errors":[]}
 ```
 
-Remaining for M1: SPARQL 1.1 HTTP *execution* (projection already ships as reviewed,
-injection-pure snapshots) and the npm packaging for `npx verax-gateway`. M2 then
-layers the security compilation kernel. See the [roadmap](docs/05-roadmap.md).
+SPARQL mode is live too, against any SPARQL 1.1 store — response-equivalence
+with the reference adapter (docs/09 L0) is enforced by a parity suite that runs
+against a real Oxigraph in CI:
+
+```bash
+# load your data into a named graph, then:
+npm run serve -- \
+  --ontology my-onto.ttl --shapes my-shapes.ttl \
+  --sparql http://localhost:7878/query --graph urn:my:graph
+```
+
+Oxigraph (and any store that ignores SPARQL protocol variable bindings) is
+handled by the adapter's auto-selected VALUES transport — never by weakening
+the no-interpolation rule. Remaining for M1: npm packaging for `npx
+verax-gateway` and the external-tester milestone. M2 then layers the security
+compilation kernel. See the [roadmap](docs/05-roadmap.md).
 
 ## Documentation
 

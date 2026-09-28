@@ -111,7 +111,7 @@ describe('sparql-http projection: D10/D6/D2 contract lines', () => {
       if (root.kind !== 'EntityLookup') throw new Error('unexpected root kind')
       return projectRoot(root, i, { first: 2, after: cursor })
     })
-    expect(request!.query).toContain('FILTER(?v0_e > $v0_e_after)')
+    expect(request!.query).toContain('FILTER(STR(?v0_e) > STR(?v0_e_after))')
     expect(request!.bindings['v0_e_after']).toBe('<https://verax.example/corpus/core/data#person-brin>')
 
     const foreignCursor = encodeCursor({

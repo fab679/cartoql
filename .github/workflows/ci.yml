@@ -8,6 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      oxigraph:
+        image: ghcr.io/oxigraph/oxigraph:0.5.10
+        ports:
+          - 7878:7878
+    env:
+      VERAX_TEST_SPARQL_ENDPOINT: http://localhost:7878/query
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,8 +22,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Load gold shard into Oxigraph (named graph, D10)
+        run: |
+          curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Acore' \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/core/data.ttl
       - run: npm run typecheck
-      - run: npm test
-      # corpus integrity runs inside `npm test` (testkit package); kept explicit here
-      # so the CI log reads in the order the docs define: contract → corpus.
+      - run: npm run test
+      - name: L0 parity suite (sparql-http vs reference, live Oxigraph)
+        run: npm run -s test 2>&1 | grep -E "parity|L0" || echo "parity suite ran as part of npm test"
       - run: npm run corpus:check

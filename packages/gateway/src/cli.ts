@@ -5,7 +5,10 @@
  *   --ontology FILE   required. module classes/properties (.ttl)
  *   --shapes   FILE   required. SHACL node shapes (.ttl)
  *   --data     FILE   reference mode: in-memory store over this .ttl
- *   --sparql   URL    reserved: SPARQL 1.1 HTTP executor lands with slice 5
+ *   --sparql   URL    SPARQL 1.1 query endpoint (protocol/VALUES transports auto-selected)
+ *   --graph    IRI    dataset graph scope (D10 — e.g. urn:verax:shard:core).
+ *                     Default: urn:verax:dataset:default. The store must hold
+ *                     the data in this named graph in SPARQL mode.
  *   --port     N      bind port (default: ephemeral, printed on startup)
  */
 import { startGateway } from './serve.js'
@@ -28,6 +31,7 @@ const gateway = startGateway({
   shapesFile,
   dataFile: flag('data'),
   sparqlEndpoint: flag('sparql'),
+  graphFlag: flag('graph'),
   port,
 })
 

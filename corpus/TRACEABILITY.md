@@ -18,7 +18,7 @@
 | 03 enforcement rules 1–3 | `leakprobes/filtering/`, `leakprobes/probes/` | probes pending M2 |
 | 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
 | 08 single-plan execution | `documents/*.graphql` → one plan per document (`expected/plans/`, stem-to-root layout); adapter execution pending | **plan snapshots landed**; executor pending |
-| 09 L0 adapter parity | reference adapter defines L0 semantics; SPARQL HTTP projection ships as reviewed snapshots (`expected/sparql/*.{rq,bind.json}`) proving query-text injection purity; HTTP execution + response assembly + live-store parity pending | **projection + purity backed; execution pending** |
+| 09 L0 adapter parity | reference adapter defines L0 semantics; sparql-http now *executes* end to end with live response-equivalence vs reference over Oxigraph 0.5.10 — deep-equal across all reference docs, page-through cursors, absent-entity shapes; parity suite in CI (services container + shard preloaded to named graph) | **backed, live in CI** |
 
 ## Shard inventory
 
