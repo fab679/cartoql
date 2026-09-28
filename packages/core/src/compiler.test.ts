@@ -119,7 +119,7 @@ describe('compiler: fail-loud surface (docs/03 enforcement-adjacent behavior)', 
     const plan = compileDocument(src, module_)
     const root = plan.roots[0]!
     if (root.kind !== 'EntityLookup') throw new Error('bad root')
-    const top = root.children as Array<{ field: string; responseKey: string }>
+    const top = root.children as readonly { field: string; responseKey: string }[]
     expect(top.find((c) => c.field === 'Person.name')?.responseKey).toBe('label')
     expect(top.find((c) => c.field === 'Person.worksFor')?.responseKey).toBe('employer')
   })
