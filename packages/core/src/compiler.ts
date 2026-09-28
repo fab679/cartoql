@@ -364,6 +364,10 @@ function flattenSelections(
 
 function compileRootField(field: FieldNode, module: CartoQLModule, fragments: ReadonlyMap<string, { onType: string; set: SelectionSetNode }>): AlgebraNode {
   const name = field.name.value
+  // root aliases are contract: the RESPONSE KEY is the client's alias — data
+  // must come back under exactly that name. A live probe showed aliases were
+  // silently dropped, breaking standard clients reading data.<alias>
+  const responseKey = field.alias?.value ?? name
   if (name.startsWith('__')) throw new CompilerError(`system field ${name} is not plan-compilable in v0`)
 
   const root = module.semanticMap.roots[name]
@@ -379,7 +383,7 @@ function compileRootField(field: FieldNode, module: CartoQLModule, fragments: Re
     const children = compileEntityChildren(field.selectionSet, root.typeName, module, fragments)
     return {
       kind: 'EntityLookup',
-      rootField: name,
+      rootField: responseKey,
       typeName: root.typeName,
       targetClass: root.targetClass,
       mode: 'single',
@@ -465,7 +469,7 @@ function compileRootField(field: FieldNode, module: CartoQLModule, fragments: Re
 
   return {
     kind: 'EntityLookup',
-    rootField: name,
+    rootField: responseKey,
     typeName: root.typeName,
     targetClass: root.targetClass,
     mode: 'scan',

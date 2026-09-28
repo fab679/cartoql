@@ -187,7 +187,7 @@ export class ReferenceAdapter implements StoreAdapter {
     }
     if (root.connectionShaping?.pageInfo) {
       result['pageInfo'] = {
-        hasNextPage: page.length > 0 && start + page.length < all.length,
+        hasNextPage: start + page.length < all.length,
         endCursor: page.length === 0
           ? null
           : encodeCursor({
