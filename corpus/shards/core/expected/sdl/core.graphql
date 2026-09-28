@@ -35,8 +35,8 @@ type PersonEdge {
 
 type Publication {
   iri: ID!
-  authoredInverse: [Person!]!
   name: String!
+  writtenBy: [Person!]!
   year: CartoQLGYear!
 }
 type PublicationConnection {

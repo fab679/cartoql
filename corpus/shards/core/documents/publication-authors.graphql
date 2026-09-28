@@ -1,7 +1,7 @@
 query PublicationAuthors($iri: ID!) {
   publication(iri: $iri) {
     name
-    authoredInverse {
+    writtenBy {
       name
       worksFor {
         name

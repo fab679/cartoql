@@ -210,6 +210,22 @@ export function generateSdl(
     }
   }
 
+  // D5 naming rule: when the ONTOLOGY declares an inverse (owl:inverseOf), the
+  // ontology's own vocabulary names the reverse-traversal field — the auto
+  // "{property}Inverse" name is only the fallback for undeclared inverses.
+  const INVERSE_OF = 'http://www.w3.org/2002/07/owl#inverseOf'
+  // keyed by the FORWARD property: given a reverse traversal path (the SHACL
+  // inversePath), find the ontology-declared name for it. owl declares
+  // writtenBy inverseOf authored; reverse-traversing "authored" is "writtenBy",
+  // so the lookup key must be authored (the object), value writtenBy (the subject).
+  const declaredInverse = new Map<string, string>()
+  for (const subj of ontology.getSubjects(INVERSE_OF, null, null)) {
+    if (subj.termType !== 'NamedNode') continue
+    for (const forward of ontology.getObjects(subj, INVERSE_OF, null)) {
+      if (forward.termType === 'NamedNode') declaredInverse.set(forward.value, subj.value)
+    }
+  }
+
   const shapeSubjects = [...shapes.getSubjects(RDF_TYPE, `${SH}NodeShape`, null)]
   const classToType = new Map<string, string>()
   for (const s of shapeSubjects) {
@@ -279,7 +295,15 @@ export function generateSdl(
     for (const propertyShape of shapes.getObjects(s, `${SH}property`, null)) {
       const raw = readProperty(shapes, propertyShape)
       const base = localName(raw.pathIri)
-      const fieldName = raw.kind === 'inverse' ? `${lowerFirst(base)}Inverse` : lowerFirst(base)
+      let fieldName: string
+      if (raw.kind === 'inverse') {
+        const ontologyInverse = declaredInverse.get(raw.pathIri)
+        fieldName = ontologyInverse !== undefined
+          ? lowerFirst(localName(ontologyInverse)) // the ontology names it (D5)
+          : `${lowerFirst(base)}Inverse`          // fallback: deterministic auto-name
+      } else {
+        fieldName = lowerFirst(base)
+      }
 
       let inner: string
       if (raw.classIri) {

@@ -60,14 +60,28 @@ describe('generator: mapping rules (docs/06)', () => {
     expect(person.fields.find((f) => f.name === 'authored')?.typeRef).toBe('[Publication!]')
   })
 
-  it('D5: inverse paths generate <name>Inverse fields', () => {
+  it('D5: inverse paths take the ONTOLOGY name when owl:inverseOf declares one', () => {
+    // core ontology declares: writtenBy owl:inverseOf authored — the reverse
+    // traversal of authored is named writtenBy, not the auto authoredInverse
     const publication = byType.get('Publication')!
-    const inverse = publication.fields.find((f) => f.name === 'authoredInverse')
-    expect(inverse).toBeDefined()
-    expect(inverse?.inverse).toBe(true)
-    expect(inverse?.pathIri).toBe('https://cartoql.example/corpus/core#authored')
-    // minCount 1, unbounded → non-null list
-    expect(inverse?.typeRef).toBe('[Person!]!')
+    const declared = publication.fields.find((f) => f.name === 'writtenBy')
+    expect(declared).toBeDefined()
+    expect(declared?.inverse).toBe(true)
+    expect(declared?.pathIri).toBe('https://cartoql.example/corpus/core#authored')
+    expect(declared?.typeRef).toBe('[Person!]!')
+    expect(publication.fields.find((f) => f.name === 'authoredInverse')).toBeUndefined()
+  })
+
+  it('D5 fallback: undeclared inverses keep the deterministic auto-name (sec corpus: noteOfInverse)', () => {
+    const secGenerated = generateSdl(
+      {
+        ontology: readFileSync(join(fileURLToPath(new URL('../../../corpus/shards/sec/', import.meta.url)), 'ontology.ttl'), 'utf-8'),
+        shapes: readFileSync(join(fileURLToPath(new URL('../../../corpus/shards/sec/', import.meta.url)), 'shapes.ttl'), 'utf-8'),
+      },
+      'corpus/shards/sec',
+      { datasetGraphs: ['urn:cartoql:shard:sec'], stamps: JSON.parse(readFileSync(join(fileURLToPath(new URL('../../../corpus/shards/sec/', import.meta.url)), 'stamps.json'), 'utf-8')) as never },
+    )
+    expect(secGenerated.sdl).toContain('noteOfInverse: [SensitiveNote!] @traversalScope')
   })
 
   it('fails loud on unknown datatypes instead of best-effort casting (D3)', () => {

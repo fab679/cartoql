@@ -44,8 +44,8 @@ describe('budgets: rejection is pre-execution and typed', () => {
   })
 
   it('depth over limit rejects; defaults accept the corpus documents', () => {
-    // person → authored → authoredInverse → name: four levels deep
-    const deep = compile('query { person(iri: "https://example/p1") { authored { authoredInverse { name } } } }')
+    // person → authored → writtenBy → name: four levels deep
+    const deep = compile('query { person(iri: "https://example/p1") { authored { writtenBy { name } } } }')
     expect(planDepth(deep)).toBe(4)
     expect(() => enforceBudgets(deep, { maxDepth: 3 })).toThrow(/plan depth/)
     for (const doc of ['person-detail.graphql', 'people-page.graphql', 'publication-authors.graphql', 'person-fragmented.graphql', 'org-and-person.graphql']) {

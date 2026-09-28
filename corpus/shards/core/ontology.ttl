@@ -26,3 +26,4 @@ vcore:authored     a owl:ObjectProperty ;
                    rdfs:domain vcore:Person ;
                    rdfs:range  vcore:Publication .
 vcore:employedBy   owl:inverseOf vcore:worksFor .
+vcore:writtenBy    owl:inverseOf vcore:authored .

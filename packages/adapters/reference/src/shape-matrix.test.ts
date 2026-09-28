@@ -33,7 +33,7 @@ const module_ = {
 }
 const adapter = ReferenceAdapter.fromTurtle(data, module_.datasetGraphs)
 
-async function ask(document: string, variables: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+async function ask(document: string, variables: Readonly<Record<string, string | number | boolean | null>> = {}): Promise<Record<string, unknown>> {
   const plan = compileDocument(document, module_)
   const response = await adapter.run(plan, module_, variables)
   return response.data as unknown as Record<string, unknown>
@@ -181,7 +181,8 @@ describe('shape matrix: constellation checks from the original probe batch', () 
   it('literal + variable FILTERS agree exactly', async () => {
     const literal = namesFrom(await ask('{ organizations(name: "Acme Research Institute", first: 5) { edges { node { name } } } }'))
     const viaVariable = namesFrom(await ask('query F($name: String) { organizations(name: $name, first: 5) { edges { node { name } } } }', { name: 'Acme Research Institute' }))
-    expect(literal).toEqual(viaVariable).toEqual(['Acme Research Institute'])
+    expect(literal).toEqual(viaVariable)
+    expect(literal).toEqual(['Acme Research Institute'])
   })
 
   it('known gap, pinned as LOUD: variable orderBy refuses (not silently mis-orders)', async () => {
