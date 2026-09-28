@@ -20,7 +20,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
 import { resolve, join } from 'node:path'
-import { buildSchema, parse, validate } from 'graphql'
+import { buildSchema, GraphQLError, parse, validate } from 'graphql'
 import { generateSdl } from '../../generator/src/index.js'
 import { compileDocument, CompilerError, type CartoQLModule } from '../../core/src/compiler.js'
 import { ExecutorError, type ResponseData, type SecurityContext } from '../../core/src/executor.js'
@@ -374,6 +374,13 @@ export function startGateway(options: ServeOptions): RunningGateway {
     } catch (err) {
       if (err instanceof CompilerError || err instanceof ExecutorError) {
         return send(400, { errors: [{ message: err.message, extensions: { name: err.name } }] })
+      }
+      // graphql source/syntax errors are client errors — the document is bad,
+      // not the gateway (they surfaced as 500 before: fixed)
+      if (err instanceof GraphQLError) {
+        return send(400, {
+          errors: [{ message: err.message, extensions: { code: 'CQL_INVALID_DOCUMENT' } }],
+        })
       }
       const message = err instanceof Error ? err.message : 'unknown error'
       return send(500, { errors: [{ message }] })

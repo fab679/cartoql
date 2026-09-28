@@ -352,7 +352,7 @@ export function App() {
               onReset={() => setRailWidth(16)}
             />
             <span style={{ width: `${railWidth}rem` }} className="flex min-h-0 shrink-0">
-              <RightRail sdl={sdlText} />
+              <RightRail sdl={sdlText} onInsertQuery={(query) => setTab({ query })} />
             </span>
           </>
         ) : null}

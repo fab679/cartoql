@@ -1,7 +1,32 @@
 import { useMemo, useState } from 'react'
 
 /** The right rail: SCHEMA (types with fields/args/doctrines) or DOCS quick reference. */
-export function RightRail({ sdl }: { readonly sdl: string }) {
+/** A query skeleton prepared from a field's SDL line: required args only,
+ * typed placeholders (ID!/String! → quoted, Int! → number) so what lands in
+ * the editor is valid GraphQL on the first ctrl+enter. */
+function skeletonFor(fieldLine: string): string {
+  const nameMatch = /^\s*([a-zA-Z][a-zA-Z0-9_]*)\s*\(/.exec(fieldLine)
+  if (nameMatch === null) return `${fieldLine.trim()} {\n  \n}`
+  const name = nameMatch[1]!
+  const argsTextMatch = /\(([^)]*)\)/.exec(fieldLine)
+  const args: string[] = []
+  if (argsTextMatch !== null) {
+    for (const piece of argsTextMatch[1]!.split(',')) {
+      const arg = /^(\s*)([a-zA-Z][a-zA-Z0-9_]*)\s*:\s*([^\s]+)/.exec(piece)
+      if (arg === null) continue
+      void arg[1]
+      const argName = arg[2]!
+      const argType = arg[3]!
+      if (!argType.includes('!')) continue // optional args stay out of the skeleton
+      if (argType.startsWith('Int')) args.push(`${argName}: 20`)
+      else args.push(`${argName}: "…"`)
+    }
+  }
+  const call = args.length === 0 ? name : `${name}(${args.join(', ')})`
+  return `query {\n  ${call} {\n    \n  }\n}`
+}
+
+export function RightRail({ sdl, onInsertQuery }: { readonly sdl: string; readonly onInsertQuery?: (query: string) => void }) {
   const [tab, setTab] = useState<'SCHEMA' | 'DOCS'>('SCHEMA')
   const [filter, setFilter] = useState('')
 
@@ -65,10 +90,21 @@ export function RightRail({ sdl }: { readonly sdl: string }) {
                 <div className="px-5 pb-2">
                   {section.body.split('\n').map((line) => {
                     const tokens = line.split(/(:\s)/)
+                    const isRootField = section.name.includes('Query')
                     return (
                       <div key={line} className="flex items-baseline gap-1 text-[11.5px]">
                         <span className="text-terrain">{tokens[0]}</span>
                         <span className="text-paper-dim">{line.slice(tokens[0]!.length)}</span>
+                        {isRootField && onInsertQuery !== undefined ? (
+                          <button
+                            type="button"
+                            title="insert a query skeleton for this field"
+                            onClick={() => onInsertQuery(skeletonFor(line))}
+                            className="ml-auto border border-line px-1 text-[10px] text-brass hover:border-brass/60"
+                          >
+                            use
+                          </button>
+                        ) : null}
                       </div>
                     )
                   })}
