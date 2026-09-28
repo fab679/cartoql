@@ -31,9 +31,9 @@ describe('sparql-http: request timeout', () => {
     // a hung *real* endpoint never responds but DOES reject on abort — the mock
     // mirrors that (an abort-ignoring promise would be a lie about fetch)
     const hang: typeof fetch = (_url, init) =>
-      new Promise((_resolve, reject) => {
+      new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
-      }) as Promise<Response> as unknown as typeof fetch
+      })
     const adapter = new SparqlHttpAdapter({
       endpoint: 'http://hang.test/sparql',
       timeoutMs: 30,
