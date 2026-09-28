@@ -49,10 +49,10 @@ jobs:
             -H 'content-type: text/turtle' --data-binary @corpus/shards/sec/acl.ttl
           curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Acartoql%3Ashard%3Atyping' \
             -H 'content-type: text/turtle' --data-binary @corpus/shards/typing/data.ttl
+      - name: Build the field console (packages/ui)
+        run: npm run -w @cartoql/ui build
       - run: npm run typecheck
       - run: npm run test
       - name: L0 parity suite (sparql-http vs reference, live Oxigraph)
         run: npm run -s test 2>&1 | grep -E "parity|L0" || echo "parity suite ran as part of npm test"
       - run: npm run corpus:check
-      - name: Build the field console (packages/ui)
-        run: npm run -w @cartoql/ui build
