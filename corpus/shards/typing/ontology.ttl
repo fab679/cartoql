@@ -1,0 +1,20 @@
+# typing shard ontology — D4: shape hierarchies, polymorphic fields
+@prefix vtyp: <https://verax.example/corpus/typing#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+vtyp:Agent        a owl:Class ; rdfs:label "Agent" .
+vtyp:Person       a owl:Class ; rdfs:subClassOf vtyp:Agent ; rdfs:label "Person" .
+vtyp:Organization a owl:Class ; rdfs:subClassOf vtyp:Agent ; rdfs:label "Organization" .
+
+vtyp:name         a owl:DatatypeProperty ; rdfs:range xsd:string .
+vtyp:crewSize     a owl:DatatypeProperty ; rdfs:range xsd:integer .
+vtyp:email        a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+# polymorphic edge: a project's *contact agent* may be a person OR an organization
+vtyp:Project      a owl:Class ; rdfs:label "Project" .
+vtyp:contact      a owl:ObjectProperty ;
+                  rdfs:domain vtyp:Project ;
+                  rdfs:range  vtyp:Agent .
+vtyp:title        a owl:DatatypeProperty ; rdfs:range xsd:string .

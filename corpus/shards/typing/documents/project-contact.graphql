@@ -1,0 +1,18 @@
+# the polymorphic field: interface field (name) + typed fragments per implementer.
+# Unconditional children apply to every agent; conditioned children only to matches.
+query ProjectContact($iri: ID!) {
+  project(iri: $iri) {
+    title
+    contact {
+      name
+      ...personFields
+      ...orgFields
+    }
+  }
+}
+fragment personFields on Person {
+  personEmail: email
+}
+fragment orgFields on Organization {
+  crewSize
+}

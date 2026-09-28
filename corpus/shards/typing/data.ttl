@@ -1,0 +1,12 @@
+# typing shard data: agents carry BOTH the Agent typing and their concrete class
+@prefix vtyp: <https://verax.example/corpus/typing#> .
+@prefix vdata: <https://verax.example/corpus/typing/data#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+vdata:agent-ada  a vtyp:Agent, vtyp:Person ; vtyp:name "Ada Ionescu" ; vtyp:email "ada@example.org" .
+vdata:agent-bco  a vtyp:Agent, vtyp:Organization ; vtyp:name "Beta Consulting" ; vtyp:crewSize "42"^^xsd:integer .
+vdata:agent-cry  a vtyp:Agent, vtyp:Person ; vtyp:name "Cryo Systems" ; vtyp:email "cry@example.org" .
+
+vdata:proj-alpha a vtyp:Project ; vtyp:title "Project Alpha" ; vtyp:contact vdata:agent-ada .
+vdata:proj-beta  a vtyp:Project ; vtyp:title "Project Beta" ; vtyp:contact vdata:agent-bco .

@@ -1,0 +1,12 @@
+query Agents {
+  agents(first: 20) {
+    edges {
+      node {
+        name
+      }
+    }
+    pageInfo {
+      hasNextPage
+    }
+  }
+}

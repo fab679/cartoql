@@ -1,0 +1,52 @@
+# typing shard shapes: AgentShape is the shared parent (interface fields = name);
+# Person/Organization refine it. Project.contact is Agent-typed: polymorphic field.
+@prefix vtyp:  <https://verax.example/corpus/typing#> .
+@prefix vshape: <https://verax.example/corpus/typing/shape#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+
+vshape:AgentShape a sh:NodeShape ;
+    sh:targetClass vtyp:Agent ;
+    sh:property [
+        sh:path vtyp:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] .
+
+vshape:PersonShape a sh:NodeShape ;
+    sh:targetClass vtyp:Person ;
+    sh:property [
+        sh:path vtyp:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vtyp:email ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] .
+
+vshape:OrganizationShape a sh:NodeShape ;
+    sh:targetClass vtyp:Organization ;
+    sh:property [
+        sh:path vtyp:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vtyp:crewSize ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#integer> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] .
+
+vshape:ProjectShape a sh:NodeShape ;
+    sh:targetClass vtyp:Project ;
+    sh:property [
+        sh:path vtyp:title ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vtyp:contact ;
+        sh:class vtyp:Agent ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] .

@@ -89,6 +89,11 @@ export interface SemanticMap {
     readonly mode: 'single' | 'list'
     readonly defaultPageSize: number
   }>>
+  /** D4: interface implementers (interface type name → child type names). */
+  readonly hierarchy?: Readonly<{
+    readonly implementers: Readonly<Record<string, readonly string[]>>
+    readonly parentOf: Readonly<Record<string, string>>
+  }>
 }
 
 export interface GenerateSdlOptions {
@@ -181,6 +186,16 @@ export function generateSdl(
   const shapes = parse(input.shapes, 'shapes')
   const ontology = parse(input.ontology, 'ontology')
 
+  // D4: shape hierarchies — subclass relations make parent classes interfaces
+  const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
+  const childToParent = new Map<string, string>()
+  for (const subj of ontology.getSubjects(SUBCLASS_OF, null, null)) {
+    if (subj.termType !== 'NamedNode') continue
+    for (const parent of ontology.getObjects(subj, SUBCLASS_OF, null)) {
+      if (parent.termType === 'NamedNode') childToParent.set(subj.value, parent.value)
+    }
+  }
+
   const shapeSubjects = [...shapes.getSubjects(RDF_TYPE, `${SH}NodeShape`, null)]
   const classToType = new Map<string, string>()
   for (const s of shapeSubjects) {
@@ -198,6 +213,38 @@ export function generateSdl(
   }
   if (classToType.size === 0) {
     throw new GenerationError('no sh:NodeShape with sh:targetClass found in the shapes graph')
+  }
+
+  // parent classes with ≥2 shaped children become GraphQL interfaces (docs/06 D4);
+  // children get `implements`. The interface field set = intersection of the
+  // children's fields (by name AND typeRef), which the renderer computes.
+  const parentToChildren = new Map<string, string[]>()
+  for (const [classIri] of classToType) {
+    const parentIri = childToParent.get(classIri)
+    if (parentIri === undefined) continue
+    const bucket = parentToChildren.get(parentIri) ?? []
+    bucket.push(classIri)
+    parentToChildren.set(parentIri, bucket)
+  }
+  const interfaceClasses = new Map<string, string[]>() // parentClassIri → childClassIris
+  for (const [parentIri, children] of parentToChildren) {
+    if (children.length >= 2) interfaceClasses.set(parentIri, children)
+  }
+  const childOfInterface = new Map<string, string>() // childClassIri → parentClassIri
+  for (const [parentIri, children] of interfaceClasses) {
+    for (const c of children) childOfInterface.set(c, parentIri)
+  }
+  // class fields referencing a parent (children exist, parent shaped) reference the
+  // INTERFACE type name in SDL; cross-type spreads compile via the hierarchy
+  const classToGraphQL = new Map<string, string>()
+  for (const [classIri, typeName] of classToType) classToGraphQL.set(classIri, typeName)
+  for (const [parentIri] of interfaceClasses) {
+    const parentType = classToType.get(parentIri)
+    if (parentType !== undefined) classToGraphQL.set(parentIri, parentType)
+  }
+  const interfaceOf = (classIri: string): string | undefined => {
+    const parentIri = childOfInterface.get(classIri)
+    return parentIri === undefined ? undefined : (classToGraphQL.get(parentIri) ?? undefined)
   }
 
   // Every exposed class must be described by the ontology graph — modules don't
@@ -265,6 +312,16 @@ export function generateSdl(
   }
   types.sort((a, b) => a.name.localeCompare(b.name))
 
+  // D4 hierarchy, expressed in type names: interface → implementers, child → parent
+  const implementers: Record<string, readonly string[]> = {}
+  const parentOf: Record<string, string> = {}
+  for (const [parentIri, childClassIris] of interfaceClasses) {
+    const parentName = classToGraphQL.get(parentIri)
+    if (parentName === undefined) continue
+    implementers[parentName] = childClassIris.map((c) => classToGraphQL.get(c)).filter((n): n is string => n !== undefined)
+    for (const childName of implementers[parentName]!) parentOf[childName] = parentName
+  }
+
   // Semantic map: field keys `TypeName.fieldName`, roots keyed by root field name.
   const fields: Record<string, SemanticMap['fields'][string]> = {}
   for (const t2 of types) {
@@ -290,13 +347,22 @@ export function generateSdl(
   }
 
   applyStamps(types, options.stamps ?? [])
-  const sdl = renderSdl(moduleId, types, options.stamps ?? [])
+  const sdl = renderSdl(
+    moduleId,
+    types,
+    options.stamps ?? [],
+    { implementers, parentOf },
+  )
   return {
     moduleId,
     sdl,
     schemaHash: createHash('sha256').update(sdl).digest('hex'),
     types,
-    semanticMap: { fields, roots },
+    semanticMap: {
+      fields,
+      roots,
+      ...(Object.keys(implementers).length > 0 ? { hierarchy: { implementers, parentOf } } : {}),
+    },
     datasetGraphs: options.datasetGraphs ?? ['urn:verax:dataset:default'],
   }
 }
@@ -427,7 +493,30 @@ function orderMember(fieldName: string, direction: 'ASC' | 'DESC'): string {
   return `${fieldName.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase()}_${direction}`
 }
 
-function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: readonly StampRule[] = []): string {
+interface HierarchyTable {
+  readonly implementers: Readonly<Record<string, readonly string[]>>
+  readonly parentOf: Readonly<Record<string, string>>
+}
+
+const EMPTY_HIERARCHY: HierarchyTable = { implementers: {}, parentOf: {} }
+
+/** Field intersection by (name, typeRef) — the docs/06 interface field set. */
+function intersectFields(fieldSets: readonly GeneratedField[][]): GeneratedField[] {
+  const first = fieldSets[0] ?? []
+  return first.filter((f) =>
+    fieldSets.every((set) => set.some((g) => g.name === f.name && g.typeRef === f.typeRef)),
+  )
+}
+
+function renderSdl(
+  moduleId: string,
+  types: readonly GeneratedType[],
+  stamps: readonly StampRule[] = [],
+  hierarchy: HierarchyTable = EMPTY_HIERARCHY,
+): string {
+  const implementersOf = (typeName: string): readonly string[] | undefined =>
+    hierarchy.implementers[typeName]
+  const parentOfNamed = new Map(Object.entries(hierarchy.parentOf))
   // Scalar declarations limited to those actually used, sorted (determinism).
   const usedScalars = new Set<string>()
   for (const t of types) {
@@ -454,8 +543,34 @@ function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: re
   const pageType = (name: string) => `${name}Connection`
 
   for (const t of types) {
+    // D4: shape-hierarchy parents render as interfaces; children implement them.
+    // The interface field set is the intersection of the implementers' fields.
+    const children = implementersOf(t.name)
+    if (children !== undefined) {
+      const childFields = children
+        .map((childName) => types.find((x) => x.name === childName)?.fields)
+        .filter((f): f is GeneratedField[] => f !== undefined)
+      const common = childFields.length > 0 ? intersectFields(childFields) : []
+      lines.push(`interface ${t.name} {`)
+      for (const f of common) lines.push(`  ${f.name}: ${f.typeRef}`)
+      lines.push('}')
+      lines.push('')
+      // interface roots keep connection pagination (node: Agent! — polymorphic
+      // connections resolve per implementer; docs/06 D4)
+      lines.push(`type ${pageType(t.name)} {`)
+      lines.push(`  edges: [${t.name}Edge!]!`)
+      lines.push('  pageInfo: PageInfo!')
+      lines.push('}')
+      lines.push(`type ${t.name}Edge {`)
+      lines.push(`  node: ${t.name}!`)
+      lines.push('  cursor: String!')
+      lines.push('}')
+      lines.push('')
+      continue // children render below with `implements`
+    }
     const typeDirective = t.typeStamp ? ` @requireGroup(group: "${t.typeStamp}")` : ''
-    lines.push(`type ${t.name}${typeDirective} {`)
+    const implementsClause = parentOfNamed.has(t.name) ? ` implements ${parentOfNamed.get(t.name)}` : ''
+    lines.push(`type ${t.name}${typeDirective}${implementsClause} {`)
     for (const f of t.fields) {
       const fieldDirective = f.stamp ? ` @requireGroup(group: "${f.stamp}")` : ''
       const traversalDirective = f.traversalStamp ? ` @traversalScope(group: "${f.traversalStamp}")` : ''
