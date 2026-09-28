@@ -6,10 +6,10 @@
 | Spec rule | Shard / fixture | Status |
 |---|---|---|
 | 06 D1 blank-node skolemization | `shards/typing/` | shard pending |
-| 06 D2 default page size (20) | `shards/pagination/` | shard pending |
-| 06 D3 decimal → string scalar | `shards/core/` + typing shard extension | pending (add schema.ttl with a decimal field) |
+| 06 D2 default page size (20) | `shards/core/expected/sdl/core.graphql` (`first: Int = 20` on every paginated root) + `shards/pagination/` (cursor stability, pending) | **SDL-backed**; pagination shard pending |
+| 06 D3 decimal → string scalar / fail-loud datatypes | generator `SCALAR_MAP` + `gold-shard.test.ts` (unknown datatype → GenerationError); decimal fixture still pending | **map + fail-loud backed**; decimal field fixture pending |
 | 06 D4 multi-typed → union fallback | `shards/typing/` | shard pending |
-| 06 D5 inverse fields (off by default) | `shards/core/shapes.ttl` (`sh:inversePath` on PublicationShape.authored) | fixture pending generator |
+| 06 D5 inverse fields | `shards/core/shapes.ttl` (`sh:path [ sh:inversePath vcore:authored ]`) → `authoredInverse: [Person!]!` in expected SDL + test | **backed** |
 | 06 D6 canonical ordering key | `shards/core/data.ttl` (authored list ≥3 on person-ada) + `shards/pagination/` | fixture pending generator |
 | 06 D7 argument injection (bound vars) | `leakprobes/injection/` | probe pending compiler |
 | 06 D8 language-tag negotiation | `shards/multilang/` | shard pending |
@@ -23,8 +23,9 @@
 ## Shard inventory
 
 - `shards/core/` — Person/Organization/Publication; single-valued types, optional
-  properties, empty-list and no-affiliation edge cases. **The first gold shard; its
-  `expected/` snapshots land together with the generator's first output (M1).**
+  properties, empty-list and no-affiliation edge cases. **First gold shard — SDL snapshot
+  landed (generator M1 slice): `expected/sdl/core.graphql`, hash-pinned and
+  byte-stable. Response/plan snapshots land with the executor and compiler IR.**
 - `shards/typing/` — multi-typed entities, unions, interface hierarchies, blank nodes (pending)
 - `shards/multilang/` — rdf:langString coverage (pending)
 - `shards/graphs/` — named-graph scoping, cross-graph duplicates (pending)

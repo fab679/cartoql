@@ -15,10 +15,14 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "npm run -s typecheck && vitest run --silent",
-    "corpus:check": "vitest run corpus"
+    "corpus:check": "vitest run corpus",
+    "corpus:snapshot:core": "tsx scripts/emit-core-sdl.ts"
   },
   "devDependencies": {
+    "@types/n3": "^1.26.4",
     "@types/node": "^20.19.43",
+    "graphql": "^16.9.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

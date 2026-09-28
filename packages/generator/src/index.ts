@@ -1,6 +1,309 @@
 /**
- * SHACL + ontology → SDL generation.
-
-M1 scaffold (docs/02 §1): node shapes → types, counts → nullability, ranges → field types, renamed terms → @deprecated. Determinism is a hard requirement.
+ * @verax/generator — SHACL + ontology → SDL (docs/02 §1, docs/06 for the mapping rules).
+ *
+ * Determinism is a hard requirement (docs/09: gold-shard snapshots are byte-stable):
+ * types and fields are emitted in sorted order, scalar declarations are limited to
+ * those actually used, and the same input always produces the same SDL.
  */
-export const MILESTONE = 'M0-scaffold' as const
+import { createHash } from 'node:crypto'
+import { Parser, Store, type Term } from 'n3'
+
+const SH = 'http://www.w3.org/ns/shacl#'
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+
+/** Scalar prefix stays a constant for the whole renameability policy (docs/01). */
+export const SCALAR_PREFIX = 'Verax'
+
+/**
+ * XSD → GraphQL scalar map (docs/06 §Literals & scalars, decision D3):
+ * decimals serialize as strings by default; JS-unsafe integers lift to a bigint
+ * scalar. Unknown datatypes fail generation loudly — never a best-effort cast.
+ */
+const SCALAR_MAP: Record<string, string> = {
+  'http://www.w3.org/2001/XMLSchema#string': 'String',
+  'http://www.w3.org/2001/XMLSchema#boolean': 'Boolean',
+  'http://www.w3.org/2001/XMLSchema#int': 'Int',
+  'http://www.w3.org/2001/XMLSchema#integer': `${SCALAR_PREFIX}Bigint`,
+  'http://www.w3.org/2001/XMLSchema#long': `${SCALAR_PREFIX}Bigint`,
+  'http://www.w3.org/2001/XMLSchema#nonNegativeInteger': `${SCALAR_PREFIX}Bigint`,
+  'http://www.w3.org/2001/XMLSchema#decimal': `${SCALAR_PREFIX}Decimal`,
+  'http://www.w3.org/2001/XMLSchema#double': `${SCALAR_PREFIX}Decimal`,
+  'http://www.w3.org/2001/XMLSchema#float': `${SCALAR_PREFIX}Decimal`,
+  'http://www.w3.org/2001/XMLSchema#date': `${SCALAR_PREFIX}Date`,
+  'http://www.w3.org/2001/XMLSchema#dateTime': `${SCALAR_PREFIX}DateTime`,
+  'http://www.w3.org/2001/XMLSchema#time': `${SCALAR_PREFIX}Time`,
+  'http://www.w3.org/2001/XMLSchema#duration': `${SCALAR_PREFIX}Duration`,
+  'http://www.w3.org/2001/XMLSchema#gYear': `${SCALAR_PREFIX}GYear`,
+  'http://www.w3.org/2001/XMLSchema#anyURI': 'IRI',
+}
+
+export class GenerationError extends Error {
+  constructor(message: string) {
+    super(`[@verax/generator] ${message}`)
+    this.name = 'GenerationError'
+  }
+}
+
+export interface GenerateSdlInput {
+  /** Turtle text of the ontology module (classes/properties; drives naming). */
+  ontology: string
+  /** Turtle text of the SHACL shape graph (drives the API surface). */
+  shapes: string
+}
+
+export interface GeneratedField {
+  name: string
+  typeRef: string
+  inverse: boolean
+  pathIri: string
+}
+
+export interface GeneratedType {
+  name: string
+  targetClass: string
+  fields: GeneratedField[]
+}
+
+export interface GeneratedSdl {
+  moduleId: string
+  sdl: string
+  schemaHash: string
+  types: GeneratedType[]
+}
+
+function localName(iri: string): string {
+  const hash = iri.lastIndexOf('#')
+  const slash = iri.lastIndexOf('/')
+  const at = Math.max(hash, slash)
+  if (at === -1 || at === iri.length - 1) {
+    throw new GenerationError(`cannot derive a local name from IRI <${iri}>`)
+  }
+  return iri.slice(at + 1)
+}
+
+function upperFirst(s: string): string {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s
+}
+
+function lowerFirst(s: string): string {
+  return s ? s[0]!.toLowerCase() + s.slice(1) : s
+}
+
+/** Irregular plural forms for root list fields; everything else gets a naive +s. */
+const IRREGULAR_PLURALS: Record<string, string> = {
+  Person: 'people',
+}
+
+function parse(text: string, what: string): Store {
+  const quads = new Parser().parse(text)
+  if (quads.length === 0) {
+    throw new GenerationError(`${what} graph is empty — refusing to generate from nothing`)
+  }
+  return new Store(quads)
+}
+
+interface RawProperty {
+  kind: 'forward' | 'inverse'
+  pathIri: string
+  classIri?: string
+  datatypeIri?: string
+  minCount: number
+  /** null = unbounded */
+  maxCount: number | null
+}
+
+/**
+ * Generate a deterministic SDL module from a SHACL shape graph (docs/02 §1).
+ *
+ * Rules implemented here (traceable in corpus/TRACEABILITY.md):
+ *  - node shapes → object types (D4 most-specific-shape/union resolution is a later
+ *    milestone: this slice requires exactly one shape per exposed class)
+ *  - sh:datatype → scalar per SCALAR_MAP; unknown datatype → GenerationError (D3)
+ *  - sh:class → nested object type; the class must itself have a covering shape
+ *  - minCount/maxCount → nullability and list-ness (docs/06 §Property resolution)
+ *  - inverse paths → `<name>Inverse` fields (D5)
+ *  - paginated roots → connection types, default page size 20 (D2)
+ */
+export function generateSdl(input: GenerateSdlInput, moduleId = 'module'): GeneratedSdl {
+  const shapes = parse(input.shapes, 'shapes')
+  const ontology = parse(input.ontology, 'ontology')
+
+  const shapeSubjects = [...shapes.getSubjects(RDF_TYPE, `${SH}NodeShape`, null)]
+  const classToType = new Map<string, string>()
+  for (const s of shapeSubjects) {
+    const target = shapes.getObjects(s, `${SH}targetClass`, null)[0]
+    if (!target) {
+      throw new GenerationError(`node shape <${s.id}> has no sh:targetClass`)
+    }
+    const typeName = upperFirst(localName(target.value))
+    if (classToType.has(target.value)) {
+      throw new GenerationError(
+        `two node shapes target class <${target.value}> (D4 union resolution is a later milestone)`,
+      )
+    }
+    classToType.set(target.value, typeName)
+  }
+  if (classToType.size === 0) {
+    throw new GenerationError('no sh:NodeShape with sh:targetClass found in the shapes graph')
+  }
+
+  // Every exposed class must be described by the ontology graph — modules don't
+  // self-invent their vocabulary (docs/04 position: the ontology is the source).
+  for (const classIri of classToType.keys()) {
+    const described = ontology.countQuads(classIri, null, null, null) > 0
+    if (!described) {
+      throw new GenerationError(`target class <${classIri}> is not described by the ontology graph`)
+    }
+  }
+
+  const types: GeneratedType[] = []
+  for (const s of shapeSubjects) {
+    const target = shapes.getObjects(s, `${SH}targetClass`, null)[0]!
+    const typeName = classToType.get(target.value)!
+    const fields: GeneratedField[] = []
+
+    for (const propertyShape of shapes.getObjects(s, `${SH}property`, null)) {
+      const raw = readProperty(shapes, propertyShape)
+      const base = localName(raw.pathIri)
+      const fieldName = raw.kind === 'inverse' ? `${lowerFirst(base)}Inverse` : lowerFirst(base)
+
+      let inner: string
+      if (raw.classIri) {
+        inner = classToType.get(raw.classIri) ?? ''
+        if (!inner) {
+          throw new GenerationError(
+            `field "${fieldName}" on ${typeName} references class <${raw.classIri}> with no covering node shape (docs/06 fallthrough is a later milestone)`,
+          )
+        }
+      } else if (raw.datatypeIri) {
+        inner = SCALAR_MAP[raw.datatypeIri] ?? ''
+        if (!inner) {
+          throw new GenerationError(
+            `unsupported datatype <${raw.datatypeIri}> on ${typeName}.${fieldName} (D3: fail loud, never a best-effort cast)`,
+          )
+        }
+      } else {
+        throw new GenerationError(
+          `property shape for ${typeName}.${fieldName} declares neither sh:class nor sh:datatype`,
+        )
+      }
+
+      const isList = raw.maxCount === null || raw.maxCount > 1
+      let typeRef: string
+      if (isList) {
+        // Elements non-null (a binding exists or the pattern fails the shape);
+        // outer non-null iff minCount ≥ 1 (docs/06 §Property resolution).
+        typeRef = `[${inner}!]${raw.minCount >= 1 ? '!' : ''}`
+      } else {
+        typeRef = raw.minCount >= 1 ? `${inner}!` : inner
+      }
+      fields.push({ name: fieldName, typeRef, inverse: raw.kind === 'inverse', pathIri: raw.pathIri })
+    }
+
+    fields.sort((a, b) => a.name.localeCompare(b.name))
+    types.push({ name: typeName, targetClass: target.value, fields })
+  }
+  types.sort((a, b) => a.name.localeCompare(b.name))
+
+  const sdl = renderSdl(moduleId, types)
+  return { moduleId, sdl, schemaHash: createHash('sha256').update(sdl).digest('hex'), types }
+}
+
+function readProperty(shapes: Store, propertyShape: Term): RawProperty {
+  const path = shapes.getObjects(propertyShape, `${SH}path`, null)[0]
+  if (!path) {
+    throw new GenerationError(`property shape <${propertyShape.id}> has no sh:path`)
+  }
+
+  let kind: 'forward' | 'inverse'
+  let pathIri: string
+  if (path.termType === 'NamedNode') {
+    kind = 'forward'
+    pathIri = path.value
+  } else if (path.termType === 'BlankNode') {
+    const inv = shapes.getObjects(path, `${SH}inversePath`, null)[0]
+    if (!inv || inv.termType !== 'NamedNode') {
+      throw new GenerationError(
+        `blank-node sh:path without a valid sh:inversePath (property shape <${propertyShape.id}>)`,
+      )
+    }
+    kind = 'inverse'
+    pathIri = inv.value
+  } else {
+    throw new GenerationError(`unsupported sh:path term type on property shape <${propertyShape.id}>`)
+  }
+
+  const minCountTerm = shapes.getObjects(propertyShape, `${SH}minCount`, null)[0]
+  const maxCountTerm = shapes.getObjects(propertyShape, `${SH}maxCount`, null)[0]
+  const minCount = minCountTerm ? Number.parseInt(minCountTerm.value, 10) : 0
+  const maxCount = maxCountTerm ? Number.parseInt(maxCountTerm.value, 10) : null
+  if (!Number.isInteger(minCount) || (maxCount !== null && !Number.isInteger(maxCount))) {
+    throw new GenerationError(`non-integer cardinality on property shape <${propertyShape.id}>`)
+  }
+
+  const classTerm = shapes.getObjects(propertyShape, `${SH}class`, null)[0]
+  const datatypeTerm = shapes.getObjects(propertyShape, `${SH}datatype`, null)[0]
+  return {
+    kind,
+    pathIri,
+    classIri: classTerm?.value,
+    datatypeIri: datatypeTerm?.value,
+    minCount,
+    maxCount,
+  }
+}
+
+function renderSdl(moduleId: string, types: GeneratedType[]): string {
+  // Scalar declarations limited to those actually used, sorted (determinism).
+  const usedScalars = new Set<string>()
+  for (const t of types) {
+    for (const f of t.fields) {
+      for (const token of f.typeRef.match(/[A-Za-z]+/g) ?? []) {
+        if (token.startsWith(SCALAR_PREFIX)) usedScalars.add(token)
+      }
+    }
+  }
+
+  const lines: string[] = []
+  lines.push(`# @verax/generated — module: ${moduleId}`)
+  lines.push('# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.')
+  lines.push('')
+  for (const scalar of [...usedScalars].sort()) lines.push(`scalar ${scalar}`)
+  if (usedScalars.size > 0) lines.push('')
+
+  const pageType = (name: string) => `${name}Connection`
+
+  for (const t of types) {
+    lines.push(`type ${t.name} {`)
+    for (const f of t.fields) lines.push(`  ${f.name}: ${f.typeRef}`)
+    lines.push('}')
+    // Connection/edge pair for the paginated root (D2: cursor-based, default 20).
+    lines.push(`type ${pageType(t.name)} {`)
+    lines.push(`  edges: [${t.name}Edge!]!`)
+    lines.push('  pageInfo: PageInfo!')
+    lines.push('}')
+    lines.push(`type ${t.name}Edge {`)
+    lines.push(`  node: ${t.name}!`)
+    lines.push('  cursor: String!')
+    lines.push('}')
+    lines.push('')
+  }
+
+  lines.push('type PageInfo {')
+  lines.push('  hasNextPage: Boolean!')
+  lines.push('  endCursor: String')
+  lines.push('}')
+  lines.push('')
+  lines.push('type Query {')
+  const queries: string[] = []
+  for (const t of types) {
+    const plural = IRREGULAR_PLURALS[t.name] ?? `${lowerFirst(t.name)}s`
+    queries.push(`${lowerFirst(t.name)}(iri: ID!): ${t.name}`)
+    queries.push(`${plural}(first: Int = 20, after: String): ${pageType(t.name)}`)
+  }
+  queries.sort((a, b) => a.localeCompare(b))
+  lines.push(...queries.map((q) => `  ${q}`))
+  lines.push('}')
+
+  return `${lines.join('\n')}\n`
+}

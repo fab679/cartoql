@@ -7,5 +7,8 @@
   "scripts": {
     "test": "vitest run --root ../.."
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "dependencies": {
+    "n3": "^2.1.0"
+  }
 }

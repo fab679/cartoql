@@ -47,8 +47,7 @@ vshape:PublicationShape a sh:NodeShape ;
         sh:minCount 1 ; sh:maxCount 1 ;
     ] ;
     sh:property [
-        sh:path vcore:authored ;
-        sh:inversePath true ;
+        sh:path [ sh:inversePath vcore:authored ] ;
         sh:class vcore:Person ;
         sh:minCount 1 ;
     ] .

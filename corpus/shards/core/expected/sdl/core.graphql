@@ -1,0 +1,59 @@
+# @verax/generated — module: corpus/shards/core
+# Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
+
+scalar VeraxGYear
+
+type Organization {
+  foundedYear: VeraxGYear
+  name: String!
+}
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+}
+type OrganizationEdge {
+  node: Organization!
+  cursor: String!
+}
+
+type Person {
+  authored: [Publication!]
+  name: String!
+  worksFor: Organization
+}
+type PersonConnection {
+  edges: [PersonEdge!]!
+  pageInfo: PageInfo!
+}
+type PersonEdge {
+  node: Person!
+  cursor: String!
+}
+
+type Publication {
+  authoredInverse: [Person!]!
+  name: String!
+  year: VeraxGYear!
+}
+type PublicationConnection {
+  edges: [PublicationEdge!]!
+  pageInfo: PageInfo!
+}
+type PublicationEdge {
+  node: Publication!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type Query {
+  organization(iri: ID!): Organization
+  organizations(first: Int = 20, after: String): OrganizationConnection
+  people(first: Int = 20, after: String): PersonConnection
+  person(iri: ID!): Person
+  publication(iri: ID!): Publication
+  publications(first: Int = 20, after: String): PublicationConnection
+}
