@@ -26,6 +26,13 @@ interface HistoryEntry {
   readonly status: number
 }
 
+// endpoint is stored PER ORIGIN so a stale port saved under an old instance never
+// bleeds into a console served by a new one (the reported stale-4137 case)
+const scopedOrigin = (): string => (window.location.origin === 'null' ? 'file' : window.location.origin)
+const endpointKey = (): string => `cartoql.endpoint@${scopedOrigin()}`
+const loadEndpoint = (): string =>
+  localStorage.getItem(endpointKey()) ?? localStorage.getItem('cartoql.endpoint') ?? ''
+
 const STORAGE = {
   endpoint: 'cartoql.endpoint',
   principal: 'cartoql.principal',
@@ -50,7 +57,7 @@ function loadTabs(): QueryTab[] {
 
 export function App() {
   // '' = same-origin (the --ui mode); an explicit URL targets an external gateway (CORS)
-  const [endpoint, setEndpoint] = useState(() => localStorage.getItem(STORAGE.endpoint) ?? '')
+  const [endpoint, setEndpoint] = useState(loadEndpoint)
   const [principal, setPrincipal] = useState(() => localStorage.getItem(STORAGE.principal) ?? '')
   const [bearer, setBearer] = useState(() => localStorage.getItem(STORAGE.bearer) ?? '')
   const [tabs, setTabs] = useState<QueryTab[]>(loadTabs)
@@ -90,7 +97,8 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE.endpoint, endpoint)
+    localStorage.setItem(endpointKey(), endpoint)
+    localStorage.removeItem('cartoql.endpoint') // migrated to the origin-scoped key
     localStorage.setItem(STORAGE.principal, principal)
     localStorage.setItem(STORAGE.bearer, bearer)
     localStorage.setItem(STORAGE.tabs, JSON.stringify(tabs))

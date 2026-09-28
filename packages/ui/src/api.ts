@@ -42,9 +42,21 @@ async function request(
   // same-origin serving (the gateway --ui mode): an empty endpoint means
   // RELATIVE fetches — the console works out of the box wherever it's served
   const trimmed = endpoint.replace(/\/+$/, '')
-  const response = await fetch(trimmed === '' ? path : `${trimmed}${path}`, init)
+  const url = trimmed === '' ? path : `${trimmed}${path}`
+  let response: Response
+  try {
+    response = await fetch(url, init)
+  } catch {
+    // refused connection / CORS network error: nothing answered at the URL
+    throw new Error(`cannot reach ${url} — no gateway is listening there; check the endpoint port (or clear it for same-origin)`)
+  }
   if (!response.ok && response.status !== 400) {
-    throw new Error(`gateway answered ${response.status} — is it running?`)
+    let detail = ''
+    try {
+      const body = (await response.json()) as { errors?: Array<{ message?: string }> }
+      detail = body.errors?.[0]?.message ? `: ${body.errors[0].message.slice(0, 120)}` : ''
+    } catch { /* body wasn't json */ }
+    throw new Error(`gateway answered ${response.status}${detail}`)
   }
   return response
 }
