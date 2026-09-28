@@ -1,0 +1,8 @@
+query PersonDetail($iri: ID!) {
+  person(iri: $iri) {
+    name
+    worksFor {
+      name
+    }
+  }
+}

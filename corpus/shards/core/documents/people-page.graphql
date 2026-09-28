@@ -1,0 +1,15 @@
+query PeoplePage($first: Int) {
+  people(first: $first) {
+    edges {
+      node {
+        name
+        authored {
+          name
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+    }
+  }
+}

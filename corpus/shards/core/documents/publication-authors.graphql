@@ -1,0 +1,11 @@
+query PublicationAuthors($iri: ID!) {
+  publication(iri: $iri) {
+    name
+    authoredInverse {
+      name
+      worksFor {
+        name
+      }
+    }
+  }
+}

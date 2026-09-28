@@ -56,6 +56,9 @@ export interface GeneratedField {
   typeRef: string
   inverse: boolean
   pathIri: string
+  cardinality: 'single' | 'list'
+  /** GraphQL type name when this field references another exposed class. */
+  itemTypeName?: string
 }
 
 export interface GeneratedType {
@@ -64,11 +67,36 @@ export interface GeneratedType {
   fields: GeneratedField[]
 }
 
+/** Field/root → SHACL-path contract: the compiler's input map (see @verax/core's identical structural type). */
+export interface SemanticMap {
+  readonly fields: Readonly<Record<string, {
+    readonly pathIri: string
+    readonly inverse: boolean
+    readonly itemClass?: string
+    readonly itemTypeName?: string
+    readonly datatype?: string
+    readonly cardinality: 'single' | 'list'
+  }>>
+  readonly roots: Readonly<Record<string, {
+    readonly typeName: string
+    readonly targetClass: string
+    readonly mode: 'single' | 'list'
+    readonly defaultPageSize: number
+  }>>
+}
+
+export interface GenerateSdlOptions {
+  /** Explicit graph set the module is scoped to (stamped into plans, docs/06 D10). */
+  datasetGraphs?: readonly string[]
+}
+
 export interface GeneratedSdl {
   moduleId: string
   sdl: string
   schemaHash: string
   types: GeneratedType[]
+  semanticMap: SemanticMap
+  datasetGraphs: readonly string[]
 }
 
 function localName(iri: string): string {
@@ -124,7 +152,11 @@ interface RawProperty {
  *  - inverse paths → `<name>Inverse` fields (D5)
  *  - paginated roots → connection types, default page size 20 (D2)
  */
-export function generateSdl(input: GenerateSdlInput, moduleId = 'module'): GeneratedSdl {
+export function generateSdl(
+  input: GenerateSdlInput,
+  moduleId = 'module',
+  options: GenerateSdlOptions = {},
+): GeneratedSdl {
   const shapes = parse(input.shapes, 'shapes')
   const ontology = parse(input.ontology, 'ontology')
 
@@ -197,7 +229,14 @@ export function generateSdl(input: GenerateSdlInput, moduleId = 'module'): Gener
       } else {
         typeRef = raw.minCount >= 1 ? `${inner}!` : inner
       }
-      fields.push({ name: fieldName, typeRef, inverse: raw.kind === 'inverse', pathIri: raw.pathIri })
+      fields.push({
+        name: fieldName,
+        typeRef,
+        inverse: raw.kind === 'inverse',
+        pathIri: raw.pathIri,
+        cardinality: isList ? 'list' : 'single',
+        itemTypeName: raw.classIri ? inner : undefined,
+      })
     }
 
     fields.sort((a, b) => a.name.localeCompare(b.name))
@@ -205,8 +244,67 @@ export function generateSdl(input: GenerateSdlInput, moduleId = 'module'): Gener
   }
   types.sort((a, b) => a.name.localeCompare(b.name))
 
+  // Semantic map: field keys `TypeName.fieldName`, roots keyed by root field name.
+  const fields: Record<string, SemanticMap['fields'][string]> = {}
+  for (const t2 of types) {
+    for (const f of t2.fields) {
+      const classIri = f.itemTypeName
+        ? (findTargetClass(types, f.itemTypeName) ?? fail(`class type ${f.itemTypeName} missing from module`))
+        : undefined
+      fields[`${t2.name}.${f.name}`] = {
+        pathIri: f.pathIri,
+        inverse: f.inverse,
+        itemClass: classIri,
+        itemTypeName: f.itemTypeName,
+        datatype: f.itemTypeName ? undefined : scalarIriFromTypeRef(f.typeRef),
+        cardinality: f.cardinality,
+      }
+    }
+  }
+  const roots: Record<string, SemanticMap['roots'][string]> = {}
+  for (const t2 of types) {
+    const { single, plural } = rootNames(t2.name)
+    roots[single] = { typeName: t2.name, targetClass: t2.targetClass, mode: 'single', defaultPageSize: 20 }
+    roots[plural] = { typeName: t2.name, targetClass: t2.targetClass, mode: 'list', defaultPageSize: 20 }
+  }
+
   const sdl = renderSdl(moduleId, types)
-  return { moduleId, sdl, schemaHash: createHash('sha256').update(sdl).digest('hex'), types }
+  return {
+    moduleId,
+    sdl,
+    schemaHash: createHash('sha256').update(sdl).digest('hex'),
+    types,
+    semanticMap: { fields, roots },
+    datasetGraphs: options.datasetGraphs ?? ['urn:verax:dataset:default'],
+  }
+}
+
+function findTargetClass(types: readonly GeneratedType[], typeName: string): string | undefined {
+  return types.find((t) => t.name === typeName)?.targetClass
+}
+
+function fail(message: string): never {
+  throw new GenerationError(message)
+}
+
+/** Inverse of the scalar map: recover the XSD IRI for a scalar name used in a type ref. */
+function scalarIriFromTypeRef(typeRef: string): string | undefined {
+  for (const [iri, scalar] of Object.entries(SCALAR_MAP)) {
+    const token = typeRef.replace(/[\[!\]]/g, '')
+    if (token === scalar && scalar.startsWith(SCALAR_PREFIX)) return iri
+    if (token === 'String' && iri.endsWith('#string')) return iri
+    if (token === 'Boolean' && iri.endsWith('#boolean')) return iri
+    if (token === 'Int' && iri.endsWith('#int')) return iri
+    if (token === 'IRI' && iri.endsWith('#anyURI')) return iri
+  }
+  return undefined
+}
+
+function rootNames(typeName: string): { single: string; plural: string } {
+  return {
+    single: lowerFirst(typeName),
+    plural: IRREGULAR_PLURALS[typeName] ?? `${lowerFirst(typeName)}s`,
+  }
 }
 
 function readProperty(shapes: Store, propertyShape: Term): RawProperty {
@@ -297,8 +395,8 @@ function renderSdl(moduleId: string, types: GeneratedType[]): string {
   lines.push('type Query {')
   const queries: string[] = []
   for (const t of types) {
-    const plural = IRREGULAR_PLURALS[t.name] ?? `${lowerFirst(t.name)}s`
-    queries.push(`${lowerFirst(t.name)}(iri: ID!): ${t.name}`)
+    const { single, plural } = rootNames(t.name)
+    queries.push(`${single}(iri: ID!): ${t.name}`)
     queries.push(`${plural}(first: Int = 20, after: String): ${pageType(t.name)}`)
   }
   queries.sort((a, b) => a.localeCompare(b))

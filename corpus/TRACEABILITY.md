@@ -10,22 +10,23 @@
 | 06 D3 decimal → string scalar / fail-loud datatypes | generator `SCALAR_MAP` + `gold-shard.test.ts` (unknown datatype → GenerationError); decimal fixture still pending | **map + fail-loud backed**; decimal field fixture pending |
 | 06 D4 multi-typed → union fallback | `shards/typing/` | shard pending |
 | 06 D5 inverse fields | `shards/core/shapes.ttl` (`sh:path [ sh:inversePath vcore:authored ]`) → `authoredInverse: [Person!]!` in expected SDL + test | **backed** |
-| 06 D6 canonical ordering key | `shards/core/data.ttl` (authored list ≥3 on person-ada) + `shards/pagination/` | fixture pending generator |
+| 06 D6 canonical ordering key | `shards/core/data.ttl` (authored list ≥3) + `shards/pagination/` | cursor/ordering fixtures pending executor |
 | 06 D7 argument injection (bound vars) | `leakprobes/injection/` | probe pending compiler |
 | 06 D8 language-tag negotiation | `shards/multilang/` | shard pending |
 | 06 D9 DISTINCT on binding-set | `shards/graphs/` (cross-graph duplicate) | shard pending |
-| 06 D10 explicit graph constraint | all shards (module datasetScope) | fixture pending compiler IR |
+| 06 D10 explicit graph constraint | `documents/*.graphql` → `expected/plans/*.json`: every IR node carries a non-empty `graphs` set (`urn:verax:shard:core`) + compiler test | **plan-backed (compiler v0)** |
 | 03 enforcement rules 1–3 | `leakprobes/filtering/`, `leakprobes/probes/` | probes pending M2 |
 | 03 `@maxDepth`/`@budget` rejection | `leakprobes/cost/` | probe pending compiler |
-| 08 single-plan execution | `shards/core` reference documents → `expected/plans/` | snapshot pending compiler IR |
+| 08 single-plan execution | `documents/*.graphql` → one plan per document (`expected/plans/`, stem-to-root layout); adapter execution pending | **plan snapshots landed**; executor pending |
 | 09 L0 adapter parity | all shards × ≥3 stores | harness pending adapter |
 
 ## Shard inventory
 
 - `shards/core/` — Person/Organization/Publication; single-valued types, optional
-  properties, empty-list and no-affiliation edge cases. **First gold shard — SDL snapshot
-  landed (generator M1 slice): `expected/sdl/core.graphql`, hash-pinned and
-  byte-stable. Response/plan snapshots land with the executor and compiler IR.**
+  properties, empty-list and no-affiliation edge cases. **First gold shard — SDL + semantic
+  map + three compiled plan snapshots landed (M1 slices 1–2): `expected/sdl/`,
+  `expected/sdl/core.map.json`, `expected/plans/`. Response snapshots land with the
+  executor/adapter slice.**
 - `shards/typing/` — multi-typed entities, unions, interface hierarchies, blank nodes (pending)
 - `shards/multilang/` — rdf:langString coverage (pending)
 - `shards/graphs/` — named-graph scoping, cross-graph duplicates (pending)
