@@ -285,9 +285,14 @@ export class ReferenceAdapter implements StoreAdapter {
       return gateOk && this.#isOfType(iri, field.itemType.kind === 'class' ? field.itemType.iri : '')
     }
     const matches = (field.inverse
-      ? [...this.#store.getSubjects(field.path, subject, null)].map((t) => t.value)
-      : [...this.#store.getObjects(subject, field.path, null)].map((t) => t.value)
-    ).filter(itemVisible).sort()
+      ? [...this.#store.getSubjects(field.path, subject, null)]
+      : [...this.#store.getObjects(subject, field.path, null)]
+    )
+      // D1: blank nodes never materialize as related entities (docs/06)
+      .filter((tt) => tt.termType === 'NamedNode')
+      .map((tt) => tt.value)
+      .filter(itemVisible)
+      .sort()
     if (field.cardinality === 'single') {
       const first = matches[0]
       return first === undefined
@@ -304,6 +309,9 @@ export class ReferenceAdapter implements StoreAdapter {
   }
 
   #subjectsOfType(targetClass: string): string[] {
-    return [...this.#store.getSubjects(RDF_TYPE, targetClass, null)].map((t) => t.value)
+    // D1: blank subjects never materialize as entities
+    return [...this.#store.getSubjects(RDF_TYPE, targetClass, null)]
+      .filter((t) => t.termType === 'NamedNode')
+      .map((t) => t.value)
   }
 }

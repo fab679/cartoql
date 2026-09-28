@@ -21,6 +21,10 @@ export const SCALAR_PREFIX = 'Verax'
  */
 const SCALAR_MAP: Record<string, string> = {
   'http://www.w3.org/2001/XMLSchema#string': 'String',
+  // D8 v0: langString maps to String — lexical value queryable today; language
+  // negotiation (docs/06 full precedence) needs field-argument machinery and
+  // is a pending traceability row, not silently approximated
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString': 'String',
   'http://www.w3.org/2001/XMLSchema#boolean': 'Boolean',
   'http://www.w3.org/2001/XMLSchema#int': 'Int',
   'http://www.w3.org/2001/XMLSchema#integer': `${SCALAR_PREFIX}Bigint`,

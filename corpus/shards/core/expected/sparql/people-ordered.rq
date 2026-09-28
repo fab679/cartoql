@@ -3,6 +3,7 @@ WHERE {
   { SELECT ?v0_e ?v0_e_ord
   WHERE {
     GRAPH <urn:verax:shard:core> { ?v0_e a <https://verax.example/corpus/core#Person> }
+    FILTER(isIRI(?v0_e))
     OPTIONAL { GRAPH <urn:verax:shard:core> { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_ord } }
   }
   ORDER BY DESC(?v0_e_ord) ?v0_e

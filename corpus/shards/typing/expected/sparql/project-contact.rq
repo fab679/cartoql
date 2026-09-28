@@ -4,6 +4,7 @@ WHERE {
   ?v0_e a <https://verax.example/corpus/typing#Project> .
   OPTIONAL { ?v0_e <https://verax.example/corpus/typing#title> ?v0_e_0_v }
   OPTIONAL { ?v0_e <https://verax.example/corpus/typing#contact> ?v0_e_1 .
+    FILTER(isIRI(?v0_e_1))
   OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e_1 a <https://verax.example/corpus/typing#Agent> } BIND(<urn:verax:type:Agent> AS ?v0_e_1_tn0) }
   OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e_1 a <https://verax.example/corpus/typing#Organization> } BIND(<urn:verax:type:Organization> AS ?v0_e_1_tn1) }
   OPTIONAL { GRAPH <urn:verax:shard:typing> { ?v0_e_1 a <https://verax.example/corpus/typing#Person> } BIND(<urn:verax:type:Person> AS ?v0_e_1_tn2) }

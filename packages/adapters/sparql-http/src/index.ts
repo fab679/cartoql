@@ -176,7 +176,8 @@ export function projectRoot(
     // as: an inner sub-SELECT that windows ENTITIES (type + cursor filter only),
     // and an outer pattern that expands just that window. The live-store parity
     // run caught both this bug and slice-4's modifiers-inside-WHERE grammar bug.
-    const inner: string[] = [`    GRAPH <${scope}> { ?${e} a <${root.targetClass}> }`]
+    // D1: blank subjects never materialize — isIRI gates the window population
+    const inner: string[] = [`    GRAPH <${scope}> { ?${e} a <${root.targetClass}> }`, `    FILTER(isIRI(?${e}))`]
     const ordering = root.ordering
     const orderByKey = ordering?.orderByKey ?? ORDER_BY_IRI
     const ordVar = ordering?.path !== undefined ? `${e}_ord` : undefined
@@ -301,6 +302,8 @@ function emitFields(
     if (f.childVar) {
       selected.push(f.childVar)
       patterns.push(`  OPTIONAL { ?${parentVar} ${arrow} ?${f.childVar} .`)
+      // D1: blank objects never materialize as related entities
+      patterns.push(`    FILTER(isIRI(?${f.childVar}))`)
       for (const g of gates) patterns.push(`    ${g}`)
       // D4: typed-fragment children carry the concrete-class condition inside
       // the OPTIONAL — the store resolves conditions (non-matches bind nothing)

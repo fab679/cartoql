@@ -4,7 +4,7 @@
 @prefix vcore: <https://verax.example/corpus/core#> .
 @prefix vdata: <https://verax.example/corpus/core/data#> .
 
-vdata:org-acme   a vcore:Organization ; vcore:name "Acme Research Institute" ; vcore:foundedYear "1994"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+vdata:org-acme   a vcore:Organization ; vcore:name "Acme Research Institute" ; vcore:foundedYear "1994"^^<http://www.w3.org/2001/XMLSchema#gYear> ; vcore:motto "Brick by brick"@en .
 vdata:org-north  a vcore:Organization ; vcore:name "Northwind Analytics" ;    vcore:foundedYear "2011"^^<http://www.w3.org/2001/XMLSchema#gYear> .
 
 vdata:person-ada   a vcore:Person ; vcore:name "Ada Ionescu" ;    vcore:worksFor vdata:org-acme  ; vcore:authored vdata:pub-a1, vdata:pub-a2, vdata:pub-a3 .
@@ -17,3 +17,11 @@ vdata:pub-a1 a vcore:Publication ; vcore:name "Algebra of compiled views" ;     
 vdata:pub-a2 a vcore:Publication ; vcore:name "Shapes as schema, once" ;            vcore:year "2024"^^<http://www.w3.org/2001/XMLSchema#gYear> .
 vdata:pub-a3 a vcore:Publication ; vcore:name "Plan-level authorization" ;         vcore:year "2025"^^<http://www.w3.org/2001/XMLSchema#gYear> .
 vdata:pub-b1 a vcore:Publication ; vcore:name "Cost models for graph overlays" ;   vcore:year "2024"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+# D1 + D8 fixtures (gap-closure 5):
+# - a blank-node publication authored by Emi: correct behavior = NEVER materialize
+#   (excluded from publications scans and Emi's authored list in both paths)
+vdata:person-emi vcore:authored [
+    a vcore:Publication ;
+    vcore:name "Untitled Draft (blank node)" ;
+    vcore:year "2026"^^<http://www.w3.org/2001/XMLSchema#gYear> ;
+] .

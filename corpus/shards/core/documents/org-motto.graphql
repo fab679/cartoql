@@ -1,0 +1,11 @@
+# D8: langString fields resolve to their lexical value (negotiation = pending row)
+query OrgMotto {
+  organizations(first: 10) {
+    edges {
+      node {
+        name
+        motto
+      }
+    }
+  }
+}

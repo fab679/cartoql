@@ -32,6 +32,11 @@ vshape:OrganizationShape a sh:NodeShape ;
         sh:path vcore:foundedYear ;
         sh:datatype <http://www.w3.org/2001/XMLSchema#gYear> ;
         sh:minCount 0 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:motto ;
+        sh:datatype <http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
     ] .
 
 vshape:PublicationShape a sh:NodeShape ;

@@ -5,6 +5,7 @@ scalar VeraxGYear
 
 type Organization {
   foundedYear: VeraxGYear
+  motto: String
   name: String!
 }
 type OrganizationConnection {
@@ -52,6 +53,8 @@ type PageInfo {
 enum OrganizationOrderBy {
   FOUNDED_YEAR_ASC
   FOUNDED_YEAR_DESC
+  MOTTO_ASC
+  MOTTO_DESC
   NAME_ASC
   NAME_DESC
 }
@@ -70,7 +73,7 @@ enum PublicationOrderBy {
 
 type Query {
   organization(iri: ID!): Organization
-  organizations(foundedYear: String, name: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
+  organizations(foundedYear: String, motto: String, name: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
   people(name: String, first: Int = 20, after: String, orderBy: PersonOrderBy): PersonConnection
   person(iri: ID!): Person
   publication(iri: ID!): Publication

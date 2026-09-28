@@ -1,4 +1,4 @@
-SELECT DISTINCT ?v0_e ?v0_e_0_v
+SELECT DISTINCT ?v0_e ?v0_e_0_v ?v0_e_1_v
 WHERE {
   { SELECT ?v0_e
   WHERE {
@@ -6,17 +6,10 @@ WHERE {
     FILTER(isIRI(?v0_e))
   }
   ORDER BY ?v0_e
-  LIMIT 3 }
+  LIMIT 11 }
   GRAPH <urn:verax:shard:core> {
   OPTIONAL { ?v0_e <https://verax.example/corpus/core#name> ?v0_e_0_v }
+  OPTIONAL { ?v0_e <https://verax.example/corpus/core#motto> ?v0_e_1_v }
   }
 }
 ORDER BY ?v0_e
-
-SELECT DISTINCT ?v1_e ?v1_e_0_v
-WHERE {
-  GRAPH <urn:verax:shard:core> {
-  ?v1_e a <https://verax.example/corpus/core#Person> .
-  OPTIONAL { ?v1_e <https://verax.example/corpus/core#name> ?v1_e_0_v }
-  }
-}

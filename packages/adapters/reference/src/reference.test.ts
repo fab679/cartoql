@@ -101,3 +101,35 @@ describe('reference adapter: runtime honesty', () => {
     await expect(foreignAdapter.run(compileDocument(readFileSync(join(shardRoot, 'documents/person-detail.graphql'), 'utf-8'), module_), module_, { iri: 'https://verax.example/corpus/core/data#person-ada' })).rejects.toThrow(/graph scope/)
   })
 })
+
+// -======- D1/D8: blank-node safety + langString lexical values (gap-closure 5) -======- //
+
+describe('reference adapter: D1 blank nodes never materialize (docs/06)', () => {
+  it('blank-node entities leave scans and class fields alike (fixture in data.ttl)', async () => {
+    // Emi authored a blank-node publication — the fixture data carries it; the
+    // query must NOT see it (existential safety, not filtering).
+    const res = await runDoc('person-detail.graphql', { iri: 'https://verax.example/corpus/core/data#person-emi' })
+    // person-detail selects name/worksFor; assert via a dedicated plan for Emi's authored list
+    const source = 'query E($iri: ID!) { person(iri: $iri) { authored { name } } }'
+    const plan = compileDocument(source, module_)
+    const authored = await adapter.run(plan, module_, { iri: 'https://verax.example/corpus/core/data#person-emi' })
+    expect((authored.data['person'] as { authored: unknown[] }).authored).toEqual([])
+    void res
+  })
+
+  it('publications scans exclude the blank-node publication (population unchanged)', async () => {
+    const plan = compileDocument('query P($first: Int) { publications(first: $first) { edges { node { name } } pageInfo { hasNextPage } } }', module_)
+    const res = await adapter.run(plan, module_, { first: 20 })
+    const names = (res.data['publications'] as { edges: Array<{ node: { name: string } }> }).edges.map((e) => e.node.name)
+    expect(names).toEqual(['Algebra of compiled views', 'Shapes as schema, once', 'Plan-level authorization', 'Cost models for graph overlays'])
+  })
+})
+
+describe('reference adapter: D8 langString resolves to the lexical value (docs/06 v0)', () => {
+  it('tagged literals return their lexical text through both paths (negotiation pending)', async () => {
+    const res = await runDoc('org-motto.graphql')
+    const edges = (res.data['organizations'] as { edges: Array<{ node: { name: string; motto: string | null } }> }).edges
+    expect(edges.find((e) => e.node.name === 'Acme Research Institute')?.node.motto).toBe('Brick by brick')
+    expect(edges.find((e) => e.node.name === 'Northwind Analytics')?.node.motto).toBeNull()
+  })
+})

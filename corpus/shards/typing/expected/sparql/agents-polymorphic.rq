@@ -3,6 +3,7 @@ WHERE {
   { SELECT ?v0_e
   WHERE {
     GRAPH <urn:verax:shard:typing> { ?v0_e a <https://verax.example/corpus/typing#Agent> }
+    FILTER(isIRI(?v0_e))
   }
   ORDER BY ?v0_e
   LIMIT 21 }
