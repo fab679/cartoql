@@ -1,0 +1,54 @@
+# core shard shapes — the SHACL contract that seeds SDL generation (docs/02 §1)
+@prefix vcore:  <https://verax.example/corpus/core#> .
+@prefix vshape: <https://verax.example/corpus/core/shape#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+
+vshape:PersonShape a sh:NodeShape ;
+    sh:targetClass vcore:Person ;
+    sh:property [
+        sh:path vcore:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:worksFor ;
+        sh:class vcore:Organization ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:authored ;
+        sh:class vcore:Publication ;
+        sh:minCount 0 ;
+    ] .
+
+vshape:OrganizationShape a sh:NodeShape ;
+    sh:targetClass vcore:Organization ;
+    sh:property [
+        sh:path vcore:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:foundedYear ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#gYear> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] .
+
+vshape:PublicationShape a sh:NodeShape ;
+    sh:targetClass vcore:Publication ;
+    sh:property [
+        sh:path vcore:name ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:year ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#gYear> ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path vcore:authored ;
+        sh:inversePath true ;
+        sh:class vcore:Person ;
+        sh:minCount 1 ;
+    ] .

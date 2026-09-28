@@ -1,0 +1,19 @@
+# core shard data — deliberately small, exercises the M1 decision points (docs/06)
+# Coverage targets: single-valued types, list-typed inverse paths, numerous-fact
+# pagination (D6 ordering key), and degenerate empty-list cases.
+@prefix vcore: <https://verax.example/corpus/core#> .
+@prefix vdata: <https://verax.example/corpus/core/data#> .
+
+vdata:org-acme   a vcore:Organization ; vcore:name "Acme Research Institute" ; vcore:foundedYear "1994"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+vdata:org-north  a vcore:Organization ; vcore:name "Northwind Analytics" ;    vcore:foundedYear "2011"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+
+vdata:person-ada   a vcore:Person ; vcore:name "Ada Ionescu" ;    vcore:worksFor vdata:org-acme  ; vcore:authored vdata:pub-a1, vdata:pub-a2, vdata:pub-a3 .
+vdata:person-brin  a vcore:Person ; vcore:name "Brin Okafor" ;    vcore:worksFor vdata:org-acme  ; vcore:authored vdata:pub-b1 .
+vdata:person-cleo  a vcore:Person ; vcore:name "Cleo Marchetti" ; vcore:worksFor vdata:org-north ; vcore:authored vdata:pub-b1, vdata:pub-a3 .
+vdata:person-dov   a vcore:Person ; vcore:name "Dov Lindqvist" ;  vcore:worksFor vdata:org-north .   # no published works (empty-list case)
+vdata:person-emi   a vcore:Person ; vcore:name "Emi Sato" .                                   # no affiliation (optional case)
+
+vdata:pub-a1 a vcore:Publication ; vcore:name "Algebra of compiled views" ;        vcore:year "2023"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+vdata:pub-a2 a vcore:Publication ; vcore:name "Shapes as schema, once" ;            vcore:year "2024"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+vdata:pub-a3 a vcore:Publication ; vcore:name "Plan-level authorization" ;         vcore:year "2025"^^<http://www.w3.org/2001/XMLSchema#gYear> .
+vdata:pub-b1 a vcore:Publication ; vcore:name "Cost models for graph overlays" ;   vcore:year "2024"^^<http://www.w3.org/2001/XMLSchema#gYear> .

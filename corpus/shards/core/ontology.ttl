@@ -1,0 +1,25 @@
+# core shard ontology — Person / Organization / Publication
+# The M1 reference module for the generator's first gold shard (docs/09).
+@prefix vcore: <https://verax.example/corpus/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+vcore:Person       a owl:Class ; rdfs:label "Person" .
+vcore:Organization a owl:Class ; rdfs:label "Organization" .
+vcore:Publication  a owl:Class ; rdfs:label "Publication" .
+
+vcore:name         a owl:DatatypeProperty ;
+                   rdfs:range xsd:string .
+vcore:year         a owl:DatatypeProperty ;
+                   rdfs:range xsd:gYear .
+vcore:foundedYear  a owl:DatatypeProperty ;
+                   rdfs:range xsd:gYear .
+
+vcore:worksFor     a owl:ObjectProperty ;
+                   rdfs:domain vcore:Person ;
+                   rdfs:range  vcore:Organization .
+vcore:authored     a owl:ObjectProperty ;
+                   rdfs:domain vcore:Person ;
+                   rdfs:range  vcore:Publication .
+vcore:employedBy   owl:inverseOf vcore:worksFor .

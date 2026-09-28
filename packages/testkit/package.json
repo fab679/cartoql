@@ -1,0 +1,11 @@
+{
+  "name": "@verax/testkit",
+  "version": "0.0.1",
+  "description": "Corpus runners, leak probes, conformance doctor (M1/M2)",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run --root ../.."
+  },
+  "license": "Apache-2.0"
+}

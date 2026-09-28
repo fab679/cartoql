@@ -1,0 +1,25 @@
+{
+  "name": "verax",
+  "private": true,
+  "version": "0.0.1",
+  "description": "GraphQL over RDF, compiled with a plan-level security kernel. Monorepo root.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "packages/adapters/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "npm run -s typecheck && vitest run --silent",
+    "corpus:check": "vitest run corpus"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

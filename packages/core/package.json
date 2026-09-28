@@ -1,0 +1,11 @@
+{
+  "name": "@verax/core",
+  "version": "0.0.1",
+  "description": "Compiler, algebra IR, directive registry, error codes",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run --root ../.."
+  },
+  "license": "Apache-2.0"
+}

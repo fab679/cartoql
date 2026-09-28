@@ -1,0 +1,11 @@
+{
+  "name": "@verax/generator",
+  "version": "0.0.1",
+  "description": "SHACL/ontology \u2192 SDL generation (M1)",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run --root ../.."
+  },
+  "license": "Apache-2.0"
+}

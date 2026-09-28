@@ -102,7 +102,7 @@ documented. Operator surprises are support debt.
 
 ## Community
 
-- Code of conduct: standard Contributor Covenant, enforced by the council.
+- Code of conduct: standard [Contributor Covenant v2.1](../CODE_OF_CONDUCT.md), enforced by the council.
 - Issue triage labels: `spec` (routes to RFC), `adapter:<store>`, `security` (routes
   to private channels — publicly visible security issues get moved to the disclosure
   process, not discussed in-thread).
