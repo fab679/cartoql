@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# coverage / test output
+coverage/
+.nyc_output/
+corpus/**/generated/
+
+# environment & secrets
+.env
+.env.*
+*.pem
+*.key
+config.local.json
+
+# caches
+.cache/
+.turbo/
+.eslintcache
+
+# logs
+*.log
+logs/
+
+# editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# verax runtime artifacts (local runs)
+verax-runtime/
+*.sqlite
