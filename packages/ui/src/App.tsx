@@ -8,6 +8,7 @@ import { QueryEditor } from './components/QueryEditor'
 import { RightRail } from './components/RightRail'
 import { Stamp, DenialStamps } from './components/Stamp'
 import { ColumnResize } from './components/Split'
+import { SchemaGraph } from './components/SchemaGraph'
 import { schemaFrom } from './utility/suggest'
 import { toCurl } from './utility/curl'
 
@@ -68,6 +69,7 @@ export function App() {
   const [showHistory, setShowHistory] = useState(false)
   const [copied, setCopied] = useState(false)
   const [railOpen, setRailOpen] = useState(() => localStorage.getItem('cartoql.panel.rail') !== 'closed')
+  const [graphOpen, setGraphOpen] = useState(() => window.location.hash === '#graph')
   const [responseOpen, setResponseOpen] = useState(() => localStorage.getItem('cartoql.panel.response') !== 'closed')
   const [responseWidth, setResponseWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.response.w') ?? 40))
   const [railWidth, setRailWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.rail.w') ?? 16))
@@ -241,6 +243,7 @@ export function App() {
         <span className="flex items-center gap-px text-[11px]">
           <button type="button" onClick={() => setResponseOpen(!responseOpen)} title="response panel" aria-pressed={responseOpen} className={`border px-1.5 py-0.5 ${responseOpen ? 'border-brass/50 text-brass' : 'border-line-2 text-paper-dim'}`}>res</button>
           <button type="button" onClick={() => setRailOpen(!railOpen)} title="schema rail" aria-pressed={railOpen} className={`border px-1.5 py-0.5 ${railOpen ? 'border-brass/50 text-brass' : 'border-line-2 text-paper-dim'}`}>rail</button>
+          <button type="button" onClick={() => setGraphOpen(true)} title="schema graph" className="border border-line-2 px-1.5 py-0.5 text-paper-dim hover:border-brass/50 hover:text-brass">graph</button>
         </span>
       </div>
 
@@ -341,6 +344,7 @@ export function App() {
           </>
         ) : null}
       </main>
+      {graphOpen && sdlText !== '' ? <SchemaGraph sdl={sdlText} onClose={() => setGraphOpen(false)} /> : null}
     </div>
   )
 }
