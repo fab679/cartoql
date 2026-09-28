@@ -1,7 +1,7 @@
 # 10 — Project Governance, Operations & Decisions
 
 How the project runs: decision records, release discipline, observability contract,
-config reference, community rules. Read together with [CONTRIBUTING.md](../CONTRIBUTING.md)
+config reference, community rules. Read together with [CONTRIBUTING.md](https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md)
 (contribution mechanics) and [05-roadmap.md](05-roadmap.md) (what's being built).
 
 ## ADRs (architecture decision records)
@@ -22,7 +22,7 @@ decisions that shape everything:
 | ADR-8 | Result cache off by default | accepted — [08](08-performance-engineering.md) |
 
 New ADRs required for: any new SPI surface change, cost-model schema major version,
-a directive semantic *loosening* (per the security carve-out in [03](03-directive-spec.md#versioning)),
+a directive semantic *loosening* (per the security carve-out in [03](03-directive-spec.md#part-iv--versioning)),
 and any deviation from "single execution artifact."
 
 ## Governance model
@@ -102,7 +102,7 @@ documented. Operator surprises are support debt.
 
 ## Community
 
-- Code of conduct: standard [Contributor Covenant v2.1](../CODE_OF_CONDUCT.md), enforced by the council.
+- Code of conduct: standard [Contributor Covenant v2.1](https://github.com/fab679/cartoql/blob/main/CODE_OF_CONDUCT.md), enforced by the council.
 - Issue triage labels: `spec` (routes to RFC), `adapter:<store>`, `security` (routes
   to private channels — publicly visible security issues get moved to the disclosure
   process, not discussed in-thread).

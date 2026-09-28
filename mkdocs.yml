@@ -1,0 +1,104 @@
+site_name: CartoQL
+site_description: GraphQL over RDF, compiled with a plan-level security kernel — typed, versioned, security-compiled query plans over any SPARQL 1.1 store
+site_url: https://fab679.github.io/cartoql/
+repo_url: https://github.com/fab679/cartoql
+repo_name: fab679/cartoql
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: amber
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: amber
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.share
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds: {case: lower}
+
+plugins:
+  - search
+  - mermaid2
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quickstart (5 minutes): getting-started.md
+      - The Console (GraphiQL-like UI): console.md
+      - Usage Examples: examples.md
+  - What CartoQL Does:
+      - Features: features.md
+      - Security Model: security.md
+      - Ontology as the Model: ontology.md
+  - API Reference:
+      - HTTP API: api.md
+      - GraphQL Schema: schema.md
+      - Error Codes: errors.md
+  - Architecture:
+      - The Compiler & Query Plans: architecture.md
+      - The Test Corpus (specs): 09-testing-conformance.md
+      - Performance Model: 08-performance-engineering.md
+  - KMap Platform:
+      - KMap (summary): kmap.md
+      - Documentation index: kmap/README.md
+      - "01 — Product Vision": kmap/01-product-vision.md
+      - "02 — Client Journey": kmap/02-client-journey.md
+      - "03 — Architecture Overview": kmap/03-architecture-overview.md
+      - "04 — Ontology Strategy": kmap/04-ontology-strategy.md
+      - "05 — Ingestion Plane": kmap/05-ingestion-plane.md
+      - "06 — Semantic Infrastructure": kmap/06-semantic-infrastructure.md
+      - "07 — Security, Tenancy & Privacy": kmap/07-security-tenancy-privacy.md
+      - "08 — Retrieval & Agents": kmap/08-retrieval-and-agents.md
+      - "09 — API Plane": kmap/09-api-plane.md
+      - "09a — GraphQL Gateway": kmap/09a-graphql-gateway.md
+      - "10 — Delivery Roadmap": kmap/10-roadmap.md
+  - Community:
+      - Contributing: https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md
+      - Security Policy: https://github.com/fab679/cartoql/blob/main/SECURITY.md
+      - Code of Conduct: https://github.com/fab679/cartoql/blob/main/CODE_OF_CONDUCT.md

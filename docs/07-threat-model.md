@@ -31,7 +31,7 @@ bug because RDF query languages have rich string escape semantics.
 **Mitigation (all mandatory):**
 - every argument compiles to a **bound variable** (06); no string interpolation in
   SPARQL-emitting code — enforced by a CI lint rule on the algebra serializer plus a
-  fuzzing property (never a parallel "escape hatch" path, per [CONTRIBUTING.md](../CONTRIBUTING.md) rule 2)
+  fuzzing property (never a parallel "escape hatch" path, per [CONTRIBUTING.md](https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md) rule 2)
 - fuzz corpus includes adversarial data (quote/escape/null-byte/keyword-injection strings), plus
   unicode homoglyphs (the fuzz suite runs every argument through the compiler and tests
   store-side plan equivalence, no rejection-by-luck)
@@ -118,14 +118,14 @@ mitigating timing fully is beyond an overlay layer's guarantee set.
   embedder-misconfiguration
 - Safe-harbor statement for researchers
 - Patch release policy: directive-relevant fixes ship **patch-versioned** with backport
-  to the last two minors (security carve-out noted in [03](03-directive-spec.md#versioning))
+  to the last two minors (security carve-out noted in [03](03-directive-spec.md#part-iv--versioning))
 
 ## Security work rituals (cross-referenced, not duplicated here)
 
 - The compiler property test suite (T4/T5 neg-probes) runs in CI on every PR —
   red = merge block, not review judgment
 - Quarterly adversarial review of the threat inventory with fresh eyes on each row
-- The [kmap security docs](../../kmap-service/docs/07-security-tenancy-privacy.md) —
+- The [kmap security docs](kmap/07-security-tenancy-privacy.md) —
   the reference embedder's deployment — live independently; failures there are embedder
   findings, but KMap-specific leak hunts almost always improve the OSS testkit corpus
   — route them here as fixtures, not just fixes

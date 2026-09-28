@@ -61,7 +61,7 @@ Rules:
   principal's expected response, same document). The *pair* is the test; single-sided
   expectations hide leaks.
 - Probes run in CI on **every** PR touching compiler directives, error semantics, or
-  caching. Red = merge block ([CONTRIBUTING.md](../CONTRIBUTING.md)).
+  caching. Red = merge block ([CONTRIBUTING.md](https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md)).
 - The corpus is public in-repo — deliberately. Published probes tell adopters exactly
   what "security compilation" is tested to mean, and invite them to contribute nastier
   ones (classified submissions via [security channels](07-threat-model.md#reporting--disclosure-securitymd-content)
