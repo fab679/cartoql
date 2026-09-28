@@ -48,7 +48,7 @@ const suite = describe.skipIf(!endpoint)('L0 parity: sparql-http vs reference (l
   let adapter: SparqlHttpAdapter
 
   beforeAll(async () => {
-    adapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+    adapter = new SparqlHttpAdapter({ endpoint: endpoint!, timeoutMs: 15_000 })
   })
 
   it.each(docNames)('%s: response-equivalent to the reference adapter', async (name) => {
@@ -141,7 +141,7 @@ const SEC_PRINCIPALS = [
 describe.skipIf(!endpoint)('L0 security parity: constraint pushdown vs reference (live Oxigraph)', () => {
   let secAdapter: SparqlHttpAdapter
   beforeAll(async () => {
-    secAdapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+    secAdapter = new SparqlHttpAdapter({ endpoint: endpoint!, timeoutMs: 15_000 })
   })
 
   const secDocs = readdirSync(join(secShard, 'documents')).filter((f) => f.endsWith('.graphql')).sort()
@@ -198,7 +198,7 @@ const typingReference = ReferenceAdapter.fromTurtle(typingData, typingModule.dat
 describe.skipIf(!endpoint)('L0 D4 parity: polymorphic entities through both paths (live Oxigraph)', () => {
   let typingAdapter: SparqlHttpAdapter
   beforeAll(async () => {
-    typingAdapter = new SparqlHttpAdapter({ endpoint: endpoint! })
+    typingAdapter = new SparqlHttpAdapter({ endpoint: endpoint!, timeoutMs: 15_000 })
   })
 
   const typingDocs = readdirScan(join(typingShard, 'documents'))

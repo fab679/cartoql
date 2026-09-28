@@ -53,7 +53,9 @@ describe.skipIf(endpoints.length === 0)('L0 parity across stores (docs/09 confor
 
   beforeAll(async () => {
     for (const endpoint of endpoints) {
-      const adapter = new SparqlHttpAdapter({ endpoint })
+      // semantic-parity explicit timeout: cold-JVM first queries on Fuseki
+      // exceed cost-scaled budgets; timeout behavior has its own suite
+      const adapter = new SparqlHttpAdapter({ endpoint, timeoutMs: 15_000 })
       // warm the transport probe per store (auto mode)
       await adapter.run(
         compileDocument('query { person(iri: "https://cartoql.example/corpus/core/data#person-ada") { name } }', module_),
