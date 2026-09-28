@@ -37,6 +37,14 @@ vshape:OrganizationShape a sh:NodeShape ;
         sh:path vcore:motto ;
         sh:datatype <http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> ;
         sh:minCount 0 ; sh:maxCount 1 ;
+    ] ;
+    # the org's employees: reverse traversal of worksFor. The ontology names
+    # the field (employedBy owl:inverseOf worksFor) — the vocabulary rule
+    # exercised on the Organization type, matching Person→worksFor forward.
+    sh:property [
+        sh:path [ sh:inversePath vcore:worksFor] ;
+        sh:class vcore:Person ;
+        sh:minCount 0 ;
     ] .
 
 vshape:PublicationShape a sh:NodeShape ;

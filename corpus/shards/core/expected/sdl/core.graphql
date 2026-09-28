@@ -5,6 +5,7 @@ scalar CartoQLGYear
 
 type Organization {
   iri: ID!
+  employedBy: [Person!]
   foundedYear: CartoQLGYear
   motto: String
   name: String!

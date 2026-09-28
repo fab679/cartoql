@@ -72,6 +72,17 @@ describe('generator: mapping rules (docs/06)', () => {
     expect(publication.fields.find((f) => f.name === 'authoredInverse')).toBeUndefined()
   })
 
+  it('D5 declared-ininverse naming works on EVERY entity type (Organization.employedBy from worksFor)', () => {
+    // worksBy/employedBy is the second ontology-declared pair; the reverse
+    // traversal on Organization must surface as employedBy
+    const org = byType.get('Organization')!
+    const employees = org.fields.find((f) => f.name === 'employedBy')
+    expect(employees).toBeDefined()
+    expect(employees?.inverse).toBe(true)
+    expect(employees?.pathIri).toBe('https://cartoql.example/corpus/core#worksFor')
+    expect(employees?.typeRef).toBe('[Person!]')
+  })
+
   it('D5 fallback: undeclared inverses keep the deterministic auto-name (sec corpus: noteOfInverse)', () => {
     const secGenerated = generateSdl(
       {
