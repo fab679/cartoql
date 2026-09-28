@@ -6,6 +6,10 @@ Per docs/09, the gold shard carries three snapshot families;
 - `plans/`  — compiled algebra IR (JSON) for the shard's reference documents
 - `responses/` — expected GraphQL responses per document
 
-Snapshots land together with the matching implementation PRs (generator first).
-Until then this directory documents the contract: snapshots are *reviewed artifacts*,
-committed to the repo, diffed in PRs — never regenerated-and-overwritten silently.
+The full trio has landed (M1):
+- `sdl/core.graphql` + `sdl/core.map.json` — generator output + semantic map
+- `plans/*.json` — compiled ADR-1 IR per reference document
+- `responses/*.json` — executed responses (reference adapter), variables recorded
+
+Snapshots are *reviewed artifacts*: committed, diffed in PRs, regenerated only via
+`npm run corpus:snapshot:core` — never silently overwritten.

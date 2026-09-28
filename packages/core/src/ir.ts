@@ -36,6 +36,8 @@ export interface AlgebraNodeBase {
 /** Root entity retrieval: single lookup by IRI, or full scan (paginated). */
 export interface EntityLookup extends AlgebraNodeBase {
   readonly kind: 'EntityLookup'
+  /** Root field name as the client wrote it — the response data key. */
+  readonly rootField: string
   readonly typeName: string
   readonly targetClass: Iri
   /** Binding for the IRI argument when mode === 'single'. */

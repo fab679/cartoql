@@ -138,6 +138,7 @@ function compileRootField(field: FieldNode, module: VeraxModule): AlgebraNode {
     const children = compileEntityChildren(field.selectionSet, root.typeName, module)
     return {
       kind: 'EntityLookup',
+      rootField: name,
       typeName: root.typeName,
       targetClass: root.targetClass,
       mode: 'single',
@@ -184,6 +185,7 @@ function compileRootField(field: FieldNode, module: VeraxModule): AlgebraNode {
 
   return {
     kind: 'EntityLookup',
+    rootField: name,
     typeName: root.typeName,
     targetClass: root.targetClass,
     mode: 'scan',
