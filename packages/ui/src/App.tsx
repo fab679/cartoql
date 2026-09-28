@@ -5,6 +5,7 @@ import { explain as explainApi, health as healthApi, runQuery, sdl as sdlApi } f
 import { BudgetGauge } from './components/BudgetGauge'
 import { JsonTree } from './components/JsonTree'
 import { QueryEditor } from './components/QueryEditor'
+import { VariablesEditor } from './components/VariablesEditor'
 import { RightRail } from './components/RightRail'
 import { Stamp, DenialStamps } from './components/Stamp'
 import { ColumnResize } from './components/Split'
@@ -314,13 +315,13 @@ export function App() {
               {explainResult !== null ? <BudgetGauge explain={explainResult} /> : null}
             </div>
             {paramsTab === 'QUERY VARIABLES' ? (
-              <textarea
-                value={activeTab.variables}
-                onChange={(e) => setTab({ variables: e.target.value })}
-                aria-label="query variables"
-                spellCheck={false}
-                className="h-32 w-full resize-none bg-ink p-2 text-[12px] outline-none"
-              />
+              <div className="h-full">
+                <VariablesEditor
+                  value={activeTab.variables}
+                  onChange={(variables) => setTab({ variables })}
+                  onSubmit={() => void run()}
+                />
+              </div>
             ) : (
               <div className="h-32 overflow-auto bg-ink p-2 text-[12px]">
                 <div className="text-paper-dim">x-cartoql-principal: <span className="text-brass">{principal === 'open' ? '(not sent)' : principal}</span></div>

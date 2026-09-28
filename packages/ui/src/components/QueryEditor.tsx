@@ -3,10 +3,25 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete'
-import { graphql /* , graphqlLinter */ } from 'cm6-graphql'
+import { graphql } from 'cm6-graphql'
 import { lintGutter } from '@codemirror/lint'
 import type { GraphQLSchema } from 'graphql'
 import { print, parse } from 'graphql'
+
+/** Shared ink-theme tokens for every CodeMirror surface (doc editor, variables…). */
+export const cmTheme = EditorView.theme({
+  '&': { height: '100%', backgroundColor: 'var(--color-ink)', color: 'var(--color-paper)', fontSize: '12.5px' },
+  '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.55', overflow: 'auto' },
+  '.cm-content': { caretColor: 'var(--color-brass)' },
+  '.cm-gutters': { backgroundColor: 'var(--color-ink)', color: 'var(--color-paper-dim)', opacity: 0.7, border: 'none', borderRight: '1px solid var(--color-line)' },
+  '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--color-brass) 5%, transparent)' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-brass)' },
+  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(201,169,107,0.25)' },
+  '&.cm-focused': { outline: 'none' },
+  '.cm-tooltip': { backgroundColor: 'var(--color-ink-2)', border: '1px solid var(--color-line-2)', color: 'var(--color-paper)' },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--color-ink-3)', color: 'var(--color-brass)' },
+  '.cm-lintRange-error': { textDecoration: 'underline wavy var(--color-spec-red)' },
+})
 
 /**
  * The editor: CodeMirror 6 + cm6-graphql (graphql-language-service — the engine
@@ -71,19 +86,7 @@ export function QueryEditor({
         if (update.docChanged) onChange(update.state.doc.toString())
       }),
       EditorState.allowMultipleSelections.of(true),
-      EditorView.theme({
-        '&': { height: '100%', backgroundColor: 'var(--color-ink)', color: 'var(--color-paper)', fontSize: '12.5px' },
-        '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.55', overflow: 'auto' },
-        '.cm-content': { caretColor: 'var(--color-brass)' },
-        '.cm-gutters': { backgroundColor: 'var(--color-ink)', color: 'var(--color-paper-dim)', opacity: 0.7, border: 'none', borderRight: '1px solid var(--color-line)' },
-        '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--color-brass) 5%, transparent)' },
-        '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-brass)' },
-        '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(201,169,107,0.25)' },
-        '&.cm-focused': { outline: 'none' },
-        '.cm-tooltip': { backgroundColor: 'var(--color-ink-2)', border: '1px solid var(--color-line-2)', color: 'var(--color-paper)' },
-        '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--color-ink-3)', color: 'var(--color-brass)' },
-        '.cm-lintRange-error': { textDecoration: 'underline wavy var(--color-spec-red)' },
-      }),
+      cmTheme,
     ]
     const view = new EditorView({
       state: EditorState.create({ doc: value, extensions }),
