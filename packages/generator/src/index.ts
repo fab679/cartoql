@@ -20,6 +20,7 @@ export const SCALAR_PREFIX = 'CartoQL'
  * scalar. Unknown datatypes fail generation loudly — never a best-effort cast.
  */
 const SCALAR_MAP: Record<string, string> = {
+  'http://www.w3.org/2001/XMLSchema#ID': 'ID',
   'http://www.w3.org/2001/XMLSchema#string': 'String',
   // D8 v0: langString maps to String — lexical value queryable today; language
   // negotiation (docs/06 full precedence) needs field-argument machinery and
@@ -352,6 +353,17 @@ export function generateSdl(
       }
     }
   }
+  // computed identity: iri is resolved by the adapters (subject IRI), but the
+  // semantic map lists it so neither compiler nor UI treats it as a contract hole
+  for (const t2 of types) {
+    fields[`${t2.name}.iri`] = {
+      pathIri: 'urn:cartoql:computed:iri',
+      inverse: false,
+      datatype: 'http://www.w3.org/2001/XMLSchema#ID',
+      cardinality: 'single',
+    }
+  }
+
   const roots: Record<string, SemanticMap['roots'][string]> = {}
   for (const t2 of types) {
     const { single, plural } = rootNames(t2.name)
@@ -580,6 +592,7 @@ function renderSdl(
         .filter((f): f is GeneratedField[] => f !== undefined)
       const common = childFields.length > 0 ? intersectFields(childFields) : []
       lines.push(`interface ${t.name} {`)
+      lines.push('  iri: ID!')
       for (const f of common) lines.push(`  ${f.name}: ${f.typeRef}`)
       lines.push('}')
       lines.push('')
@@ -599,6 +612,12 @@ function renderSdl(
     const typeDirective = t.typeStamp ? ` @requireGroup(group: "${t.typeStamp}")` : ''
     const implementsClause = parentOfNamed.has(t.name) ? ` implements ${parentOfNamed.get(t.name)}` : ''
     lines.push(`type ${t.name}${typeDirective}${implementsClause} {`)
+    // identity is data: entity IRIs are the addressing mechanism of every
+    // root, so a listing can SHOW the IRI and discovery bootstraps — computed
+    // like __typename (no graph triple). Security never gates identity here:
+    // an entity a principal may see may show its iri; gated entities never
+    // appear at all (population/edge gates do that work — docs/07)
+    lines.push('  iri: ID!')
     for (const f of t.fields) {
       const directive = f.stampDirective ?? '@requireGroup'
       const argName = directive === '@requireRole' ? 'role' : 'group'

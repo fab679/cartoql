@@ -4,6 +4,7 @@
 scalar CartoQLGYear
 
 type Organization {
+  iri: ID!
   foundedYear: CartoQLGYear
   motto: String
   name: String!
@@ -18,6 +19,7 @@ type OrganizationEdge {
 }
 
 type Person {
+  iri: ID!
   authored: [Publication!]
   name: String!
   worksFor: Organization
@@ -32,6 +34,7 @@ type PersonEdge {
 }
 
 type Publication {
+  iri: ID!
   authoredInverse: [Person!]!
   name: String!
   year: CartoQLGYear!

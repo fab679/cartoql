@@ -274,8 +274,13 @@ function walkEntitySelections(
   const walk = (inner: SelectionSetNode, onType: string): void => {
     for (const selection of inner.selections) {
       if (selection.kind === 'Field') {
-        if (selection.name.value === '__typename') {
+          if (selection.name.value === '__typename') {
           conditions.unshift({ onType, fields: [], typenameWanted: true })
+          continue
+        }
+        // iri: computed identity (like __typename) — carries the subject IRI
+        if (selection.name.value === 'iri') {
+          fields.push(selection)
           continue
         }
         if (fieldIsActive(selection)) fields.push(selection)

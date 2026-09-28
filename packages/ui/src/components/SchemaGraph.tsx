@@ -124,7 +124,24 @@ const KIND_COLOR: Record<GNode['kind'], string> = {
   scalar: '#a8a497',
 }
 
-export function SchemaGraph({ sdl, onClose }: { readonly sdl: string; readonly onClose: () => void }) {
+export interface SampleEntity {
+  readonly iri: string
+  readonly label: string | null
+}
+
+export function SchemaGraph({
+  sdl,
+  onClose,
+  fetchSamples,
+  onUseIri,
+}: {
+  readonly sdl: string
+  readonly onClose: () => void
+  /** resolve up to five real entities of a type: the graph answers whose IRIs exist */
+  readonly fetchSamples?: (typeName: string) => Promise<readonly SampleEntity[]>
+  /** insert a single-entity lookup skeleton for a chosen IRI */
+  readonly onUseIri?: (typeName: string, iri: string) => void
+}) {
   const full = useMemo(() => buildGraph(sdl), [sdl])
   const [helpers, setHelpers] = useState(false)
   const graph = useMemo(() => {
@@ -141,6 +158,8 @@ export function SchemaGraph({ sdl, onClose }: { readonly sdl: string; readonly o
     }
   }, [full, helpers])
   const [selected, setSelected] = useState<GNode | null>(null)
+  const [samples, setSamples] = useState<readonly SampleEntity[] | null>(null)
+  const [samplesFor, setSamplesFor] = useState<string | null>(null)
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 })
   const svgRef = useRef<SVGSVGElement>(null)
   const dragState = useRef<{ kind: 'node' | 'canvas'; id?: string; lastX: number; lastY: number } | null>(null)
@@ -210,6 +229,17 @@ export function SchemaGraph({ sdl, onClose }: { readonly sdl: string; readonly o
   if (graph === null) return null
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
   const selectedEdges = selected === null ? [] : graph.edges.filter((e) => e.from === selected.id || e.to === selected.id)
+
+  const pickNode = (id: string): void => {
+    const node = byId.get(id)
+    setSelected(node ?? null)
+    if (node === undefined || fetchSamples === undefined) return
+    setSamples(null)
+    setSamplesFor(id)
+    void fetchSamples(id)
+      .then((list) => { if (setSamplesFor !== null) setSamples(list) })
+      .catch(() => setSamples([]))
+  }
 
   return (
     <div
@@ -305,6 +335,7 @@ export function SchemaGraph({ sdl, onClose }: { readonly sdl: string; readonly o
                     stroke={isSel ? 'var(--color-brass)' : 'var(--color-line-2)'}
                     strokeWidth={isSel ? 1.6 : 1}
                     className="cursor-pointer"
+                    onClick={() => pickNode(node.id)}
                   />
                   <text
                     x={width / 2}
@@ -322,15 +353,41 @@ export function SchemaGraph({ sdl, onClose }: { readonly sdl: string; readonly o
             })}
           </g>
         </svg>
-        <div className="absolute bottom-2 left-2 flex gap-3 border border-line bg-ink px-2 py-1 text-[10px] text-paper-dim">
-          <span className="text-brass">■ root/interface</span>
-          <span className="text-paper-dim">■ type</span>
-          <span className="text-terrain">■ enum</span>
+        <div className="absolute bottom-2 left-2 right-2 flex max-h-28 items-start gap-2 overflow-auto border border-line bg-ink px-2 py-1 text-[10.5px] text-paper-dim">
+          <span className="shrink-0 text-brass">■ root</span>
+          <span className="shrink-0">■ type</span>
+          <span className="shrink-0 text-terrain">■ enum</span>
           {selected !== null ? (
-            <span className="text-paper">
+            <span className="shrink-0 text-paper">
               {selected.id} → {selectedEdges.map((e) => e.label.slice(0, Math.floor(60 / Math.max(1, selectedEdges.length))).trim()).filter(Boolean).join(' · ')}
             </span>
           ) : null}
+          <span className="ml-auto flex flex-col gap-0.5">
+            {samplesFor === selected?.id && samples === null ? (
+              <span className="text-paper-dim">loading samples…</span>
+            ) : null}
+            {samplesFor === selected?.id && samples !== null && samples.length === 0 ? (
+              <span className="text-paper-dim">no visible instances (or the principal lacks access)</span>
+            ) : null}
+            {samplesFor === selected?.id && samples !== null && samples.length > 0
+              ? samples.map((sample) => (
+                  <span key={sample.iri} className="flex items-baseline gap-1">
+                    <code className="truncate text-terrain" title={sample.iri}>{sample.iri}</code>
+                    <span className="truncate text-paper-dim">{sample.label}</span>
+                    {onUseIri !== undefined ? (
+                      <button
+                        type="button"
+                        title="insert a single-entity lookup for this IRI"
+                        onClick={() => onUseIri(selected!.id, sample.iri)}
+                        className="shrink-0 border border-line px-1 text-brass hover:border-brass/60"
+                      >
+                        use
+                      </button>
+                    ) : null}
+                  </span>
+                ))
+              : null}
+          </span>
         </div>
       </div>
     </div>

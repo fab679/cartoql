@@ -8,7 +8,8 @@ import { QueryEditor } from './components/QueryEditor'
 import { RightRail } from './components/RightRail'
 import { Stamp, DenialStamps } from './components/Stamp'
 import { ColumnResize } from './components/Split'
-import { SchemaGraph } from './components/SchemaGraph'
+import { SchemaGraph, type SampleEntity } from './components/SchemaGraph'
+import { buildQuerySkeleton } from './utility/skeleton'
 import { schemaFrom } from './utility/suggest'
 import { toCurl } from './utility/curl'
 
@@ -53,6 +54,21 @@ function loadTabs(): QueryTab[] {
   }
   // schema-agnostic starter: whatever ontology the gateway serves, this opens against it
   return [{ id: 'tab1', name: 'query 1', query: 'query {\n  \n}', variables: '{}' }]
+}
+
+/** Which root field lists a type? (field whose return type is <TypeName>Connection) */
+function pluralRootFor(schemaOfSdl: string, typeName: string): string | null {
+  try {
+    const schema = schemaFrom(schemaOfSdl)
+    const query = schema?.getQueryType()
+    if (query === undefined || query === null) return null
+    for (const [name, field] of Object.entries((query as unknown as { getFields(): Record<string, { name: string; type: { toString(): string } }> }).getFields())) {
+      if (String(field.type).replace(/[[\]!]/g, '').toString().toString() === `${typeName}Connection`) return name
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 export function App() {
@@ -360,7 +376,33 @@ export function App() {
           </>
         ) : null}
       </main>
-      {graphOpen && sdlText !== '' ? <SchemaGraph sdl={sdlText} onClose={() => setGraphOpen(false)} /> : null}
+      {graphOpen && sdlText !== '' ? (
+        <SchemaGraph
+          sdl={sdlText}
+          onClose={() => setGraphOpen(false)}
+          fetchSamples={async (typeName): Promise<readonly SampleEntity[]> => {
+            const plural = pluralRootFor(sdlText, typeName)
+            if (plural === null) return []
+            const skeleton = buildQuerySkeleton(schema, `  ${plural}(first: Int = 20): ${typeName}Connection`)
+            const result = await runQuery(endpoint, skeleton, {}, principal === '' ? undefined : principal, bearer === '' ? undefined : bearer)
+            const body = result.body as { data?: Record<string, { edges?: Array<{ node?: Record<string, string | null> }> }> }
+            const edges = body.data?.[plural]?.edges ?? []
+            return edges
+              .map((edge) => {
+                const node = edge.node ?? {}
+                const iri = typeof node.iri === 'string' ? node.iri : ''
+                const label = typeof node.name === 'string' ? node.name : null
+                return { iri, label: label !== null ? label : (Object.entries(node).find(([key, value]) => key !== 'iri' && typeof value === 'string')?.[1] ?? null) }
+              })
+          }}
+          onUseIri={(typeName, iri): void => {
+            const single = typeName === 'Query' ? 'organization' : typeName.charAt(0).toLowerCase() + typeName.slice(1)
+            const skeleton = `query {\n  ${single}(iri: "${iri}") {\n    iri name\n  }\n}`
+            setTab({ query: skeleton, name: `${single} lookup` })
+            setGraphOpen(false)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

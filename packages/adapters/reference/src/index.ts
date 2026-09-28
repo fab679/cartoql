@@ -211,6 +211,10 @@ export class ReferenceAdapter implements StoreAdapter {
         entity[child.responseKey] = this.#resolveTypename(subject, child)
         continue
       }
+      if (child.path === 'urn:cartoql:computed:iri') {
+        entity[child.responseKey] = subject
+        continue
+      }
       entity[child.responseKey] = this.#expandField(subject, child, security, errors)
     }
     return entity

@@ -144,6 +144,24 @@ function createContext(principalId: string, groups: readonly string[]): Security
   return { principalId, view: { groups: new Set(groups), viewVersion: 'static-1' } }
 }
 
+describe('identity is data: iri in every listing (the which-IRI answer)', () => {
+  it('connections expose entity IRIs — discovery bootstraps; gated entities show none', async () => {
+    // alice (legal) sees SensitiveNote entities and their IRIs
+    const alice = await run('notes-scan.graphql', ALICE())
+    const edges = alice.data['sensitiveNotes'] as { edges: Array<{ node: { name: string }> }> }
+    expect(edges.edges.length).toBe(1) // corpora: two in core typing; sec has 2 — snapshot governs exact
+    // listings can select iri on the entity type
+    const source = 'query { sensitiveNotes(first: 10) { edges { node { iri name } } } }'
+    const plan = compileDocument(source, module_)
+    const withIris = await adapter.run(plan, module_, {}, ALICE())
+    const secEdges = (withIris.data['sensitiveNotes'] as { edges: Array<{ node: { iri: string; name: string } }> }).edges
+    for (const edge of secEdges) expect(edge.node.iri).toMatch(/^https:\/\/cartoql\.example\//)
+    // bob (no groups): the gated population is EMPTY — iris and entities alike never appear
+    const bob = await adapter.run(plan, module_, {}, BOB())
+    expect((bob.data['sensitiveNotes'] as { edges: unknown[] }).edges).toEqual([])
+  })
+})
+
 describe('security corpus: snapshot discipline', () => {
   it('every response snapshot matches byte-for-byte after canonical serialization', async () => {
     const { readdirSync } = await import('node:fs')

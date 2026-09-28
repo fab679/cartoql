@@ -294,6 +294,8 @@ function emitFields(
   scope = 'urn:cartoql:dataset:default',
 ): void {
   fields.forEach((f) => {
+    // computed iri: no triple to fetch — assembly reads the entity var directly
+    if (f.node.path === 'urn:cartoql:computed:iri') return
     // __typename (D4): per-implementer OPTIONAL + BIND marker; assembly maps them
     if (f.node.returnsTypename !== undefined) {
       let markerIndex = 0
@@ -639,6 +641,11 @@ function buildEntity(
   const entity: Record<string, unknown> = {}
   const firstRow = rows[0] ?? {}
   for (const f of fields) {
+    // computed identity: the entity var IS the iri — rows carry it on every binding
+    if (f.node.path === 'urn:cartoql:computed:iri' && entityVar !== undefined) {
+      entity[f.node.responseKey] = firstRow[entityVar]?.value ?? ''
+      continue
+    }
     // D4 __typename: per-implementer markers bound in rows; most specific wins
     // (any marker whose type name differs from the containing type)
     if (f.node.returnsTypename !== undefined && entityVar !== undefined) {
