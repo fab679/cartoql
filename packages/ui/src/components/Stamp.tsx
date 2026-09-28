@@ -19,8 +19,8 @@ export function Stamp({
           ? 'border-spec-red/60 text-spec-red'
           : 'border-line-2 text-paper-dim'
   return (
-    <span className={`stamp-tilt inline-flex items-baseline gap-1.5 border px-2 py-0.5 text-[11px] ${toneClass}`}>
-      <span className="uppercase tracking-0.08em opacity-70">{label}</span>
+    <span className={`inline-flex items-baseline gap-1.5 border px-1.5 py-px text-[11px] ${toneClass}`}>
+      <span className="tracking-0.04em opacity-70">{label}</span>
       <span className="font-semibold">{value}</span>
     </span>
   )

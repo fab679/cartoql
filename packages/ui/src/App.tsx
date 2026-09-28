@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { parse, print } from 'graphql'
 import type { Explain, GraphQLErrorEntry, Health } from './api'
 import { explain as explainApi, health as healthApi, runQuery, sdl as sdlApi } from './api'
-import { PRESET_SHEETS, PRINCIPALS, type Preset } from './presets'
 import { BudgetGauge } from './components/BudgetGauge'
 import { JsonTree } from './components/JsonTree'
 import { QueryEditor } from './components/QueryEditor'
 import { RightRail } from './components/RightRail'
 import { Stamp, DenialStamps } from './components/Stamp'
+import { ColumnResize } from './components/Split'
 import { schemaFrom } from './utility/suggest'
 import { toCurl } from './utility/curl'
 
@@ -31,6 +31,8 @@ const STORAGE = {
   bearer: 'cartoql.bearer',
   tabs: 'cartoql.tabs',
   activeTab: 'cartoql.active.tab',
+  panelResponse: 'cartoql.panel.response',
+  panelRail: 'cartoql.panel.rail',
 } as const
 
 function loadTabs(): QueryTab[] {
@@ -41,14 +43,14 @@ function loadTabs(): QueryTab[] {
       if (parsed.length > 0) return parsed
     } catch { /* fall through */ }
   }
-  const first = PRESET_SHEETS[1]!.presets[0]!
-  return [{ id: 'tab1', name: 'orgs + budget', query: first.query, variables: first.variables }]
+  // schema-agnostic starter: whatever ontology the gateway serves, this opens against it
+  return [{ id: 'tab1', name: 'query 1', query: 'query {\n  \n}', variables: '{}' }]
 }
 
 export function App() {
   // '' = same-origin (the --ui mode); an explicit URL targets an external gateway (CORS)
   const [endpoint, setEndpoint] = useState(() => localStorage.getItem(STORAGE.endpoint) ?? '')
-  const [principal, setPrincipal] = useState(() => localStorage.getItem(STORAGE.principal) ?? 'alice')
+  const [principal, setPrincipal] = useState(() => localStorage.getItem(STORAGE.principal) ?? '')
   const [bearer, setBearer] = useState(() => localStorage.getItem(STORAGE.bearer) ?? '')
   const [tabs, setTabs] = useState<QueryTab[]>(loadTabs)
   const [activeTabId, setActiveTabId] = useState(() => localStorage.getItem(STORAGE.activeTab) ?? 'tab1')
@@ -65,7 +67,10 @@ export function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [railOpen, setRailOpen] = useState(true)
+  const [railOpen, setRailOpen] = useState(() => localStorage.getItem('cartoql.panel.rail') !== 'closed')
+  const [responseOpen, setResponseOpen] = useState(() => localStorage.getItem('cartoql.panel.response') !== 'closed')
+  const [responseWidth, setResponseWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.response.w') ?? 40))
+  const [railWidth, setRailWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.rail.w') ?? 16))
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]!
 
@@ -88,7 +93,11 @@ export function App() {
     localStorage.setItem(STORAGE.bearer, bearer)
     localStorage.setItem(STORAGE.tabs, JSON.stringify(tabs))
     localStorage.setItem(STORAGE.activeTab, activeTab.id)
-  }, [endpoint, principal, bearer, tabs, activeTab])
+    localStorage.setItem('cartoql.panel.response.w', String(responseWidth))
+    localStorage.setItem('cartoql.panel.rail.w', String(railWidth))
+    localStorage.setItem('cartoql.panel.response', responseOpen ? 'open' : 'closed')
+    localStorage.setItem('cartoql.panel.rail', railOpen ? 'open' : 'closed')
+  }, [endpoint, principal, bearer, tabs, activeTab, responseWidth, railWidth, responseOpen, railOpen])
 
   useEffect(() => {
     const timer = setTimeout(() => void loadHealth(endpoint), 300)
@@ -100,8 +109,7 @@ export function App() {
   }
 
   const addTab = (): void => {
-    const last = PRESET_SHEETS[0]!.presets[0]!
-    const tab = { id: `tab${Date.now()}`, name: 'new query', query: last.query, variables: last.variables }
+    const tab = { id: `tab${Date.now()}`, name: `query ${tabs.length + 1}`, query: 'query {\n  \n}', variables: '{}' }
     setTabs((current) => [...current, tab])
     setActiveTabId(tab.id)
   }
@@ -110,7 +118,7 @@ export function App() {
     setTabs((current) => {
       const remaining = current.filter((t) => t.id !== id)
       if (remaining.length === 0) {
-        const fresh = { id: `tab${Date.now()}`, name: 'new query', query: PRESET_SHEETS[0]!.presets[0]!.query, variables: PRESET_SHEETS[0]!.presets[0]!.variables }
+        const fresh = { id: `tab${Date.now()}`, name: 'query 1', query: 'query {\n  \n}', variables: '{}' }
         setActiveTabId(fresh.id)
         return [fresh]
       }
@@ -119,9 +127,6 @@ export function App() {
     })
   }
 
-  const loadPreset = (preset: Preset): void => {
-    setTab({ query: preset.query, variables: preset.variables, name: preset.label })
-  }
 
   const run = useCallback(async (): Promise<void> => {
     let variables: Record<string, unknown> = {}
@@ -138,7 +143,7 @@ export function App() {
         endpoint,
         activeTab.query,
         variables,
-        principal === 'open' ? undefined : principal,
+        principal === '' ? undefined : principal,
         bearer === '' ? undefined : bearer,
       )
       const body = result.body as { errors?: readonly GraphQLErrorEntry[] } | unknown
@@ -181,7 +186,6 @@ export function App() {
     }
   }, [endpoint, activeTab])
 
-  const activeSheet = PRESET_SHEETS.find((s) => PRESET_SHEETS.flatMap((x) => x.presets).find((p) => p.query === activeTab.query) && s.presets.find((p) => p.query === activeTab.query)) ?? null
 
   const health = healthState
   return (
@@ -200,8 +204,7 @@ export function App() {
           <button type="button" onClick={addTab} aria-label="new tab" className="px-2 text-paper-dim hover:text-brass">＋</button>
         </div>
         <div className="ml-auto flex items-center gap-2 text-[12px]">
-          <span className={health === null ? 'text-spec-red' : 'text-terrain'}>{health === null ? 'offline' : health.status}</span>
-          <span className="text-paper-dim">{health === null ? null : `auth: ${health.auth}`}</span>
+          <span className={health === null ? 'text-spec-red' : 'text-terrain'}>{health === null ? 'offline' : `gateway ${health.status}`}</span>
         </div>
       </header>
 
@@ -235,33 +238,39 @@ export function App() {
         <button type="button" onClick={() => copyCurl()} className="border border-line-2 px-2 py-0.5 tracking-wider text-paper-dim hover:border-brass/50 hover:text-brass">
           {copied ? 'COPIED ✓' : 'COPY CURL'}
         </button>
-        <button type="button" onClick={() => setRailOpen(!railOpen)} aria-label="toggle schema rail" className="border border-line-2 px-2 py-0.5 text-paper-dim hover:border-brass/50 hover:text-brass">
-          {railOpen ? '▶' : '◀'}
-        </button>
+        <span className="flex items-center gap-px text-[11px]">
+          <button type="button" onClick={() => setResponseOpen(!responseOpen)} title="response panel" aria-pressed={responseOpen} className={`border px-1.5 py-0.5 ${responseOpen ? 'border-brass/50 text-brass' : 'border-line-2 text-paper-dim'}`}>res</button>
+          <button type="button" onClick={() => setRailOpen(!railOpen)} title="schema rail" aria-pressed={railOpen} className={`border px-1.5 py-0.5 ${railOpen ? 'border-brass/50 text-brass' : 'border-line-2 text-paper-dim'}`}>rail</button>
+        </span>
       </div>
 
       {notice !== null ? <div className="border-b border-line-2 bg-spec-red/10 px-3 py-1 text-[12px] text-spec-red">{notice}</div> : null}
 
       <main className="flex min-h-0 flex-1">
         <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between border-b border-line/60 px-2 py-1">
-            <span className="text-[11px] text-paper-dim">
+          <div className="flex items-center justify-between border-b border-line/60 px-2 py-1 text-[11px]">
+            <label className="flex items-center gap-1 text-paper-dim">
               principal
-            </span>
-            <div className="flex flex-wrap items-center gap-1">
-              {PRINCIPALS.map((candidate) => (
-                <button
-                  key={candidate.name}
-                  type="button"
-                  title={candidate.hint}
-                  onClick={() => setPrincipal(candidate.id ?? 'open')}
-                  className={`border px-1.5 py-0.5 text-[11px] ${principal === (candidate.id ?? 'open') ? 'border-brass/60 text-brass' : 'border-line text-paper-dim hover:border-line-2'}`}
-                >
-                  {candidate.name}
-                </button>
-              ))}
-              <input type="text" placeholder="bearer…" value={bearer} onChange={(e) => setBearer(e.target.value)} className="w-24 border border-line bg-ink-2 px-1.5 py-0.5 text-[11px] outline-none focus:border-brass/50" />
-            </div>
+              <input
+                type="text"
+                value={principal}
+                onChange={(e) => setPrincipal(e.target.value)}
+                placeholder="(none)"
+                aria-label="principal header value"
+                className="w-32 border border-line bg-ink-2 px-1.5 py-0.5 font-mono text-paper outline-none focus:border-brass/50"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-paper-dim">
+              bearer
+              <input
+                type="text"
+                value={bearer}
+                onChange={(e) => setBearer(e.target.value)}
+                placeholder="(none)"
+                aria-label="bearer token"
+                className="w-40 border border-line bg-ink-2 px-1.5 py-0.5 font-mono text-paper outline-none focus:border-brass/50"
+              />
+            </label>
           </div>
           <QueryEditor value={activeTab.query} onChange={(query) => setTab({ query })} onSubmit={() => void run()} schema={schema} />
           <div className="h-40 shrink-0 border-t border-line">
@@ -288,24 +297,23 @@ export function App() {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-line px-2 py-1">
-            <span className="text-[11px] tracking-wider text-paper-dim">PRESETS</span>
-            {(activeSheet ?? PRESET_SHEETS[1]!).presets.map((preset) => (
-              <button key={preset.label} type="button" title={preset.shows} onClick={() => loadPreset(preset)} className="border border-line px-1.5 py-0.5 text-[11px] text-paper-dim hover:border-brass/50 hover:text-brass">
-                {preset.label}
-              </button>
-            ))}
-          </div>
         </section>
 
-        <section className={railOpen ? 'flex min-h-0 w-1/2 flex-1 flex-col border-l border-line bg-ink-2' : 'hidden'}>
-          <div className="contours flex flex-wrap items-center gap-2 border-b border-line px-2 py-1" key={landKey}>
+        {responseOpen ? (
+          <>
+            <ColumnResize
+              ariaLabel="resize response panel"
+              onResize={(delta) => setResponseWidth((w) => Math.min(64, Math.max(20, w - delta / 16)))}
+              onReset={() => setResponseWidth(40)}
+            />
+            <section style={{ width: `${responseWidth}rem` }} className="flex min-h-0 shrink-0 grow-0 flex-col border-l border-line bg-ink-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-2 py-1">
             <span className="text-[11px] tracking-wider text-paper-dim">RESPONSE</span>
-            {response !== null && landKey > 0 ? (
+            {response !== null ? (
               <>
                 <Stamp label="status" value={String(status)} tone={status === 200 ? 'terrain' : 'red'} />
                 <Stamp label="time" value={`${ms.toFixed(0)}ms`} />
-                {response.rejects.length === 0 ? <Stamp label="record" value="clear" tone="terrain" /> : <DenialStamps errors={response.rejects} />}
+                <DenialStamps errors={response.rejects} />
               </>
             ) : null}
           </div>
@@ -316,9 +324,22 @@ export function App() {
               <JsonTree data={response.body} />
             )}
           </div>
-        </section>
+            </section>
+          </>
+        ) : null}
 
-        {railOpen ? <RightRail sdl={sdlText} /> : null}
+        {railOpen ? (
+          <>
+            <ColumnResize
+              ariaLabel="resize schema rail"
+              onResize={(delta) => setRailWidth((w) => Math.min(32, Math.max(12, w - delta / 16)))}
+              onReset={() => setRailWidth(16)}
+            />
+            <span style={{ width: `${railWidth}rem` }} className="flex min-h-0 shrink-0">
+              <RightRail sdl={sdlText} />
+            </span>
+          </>
+        ) : null}
       </main>
     </div>
   )

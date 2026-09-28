@@ -27,6 +27,11 @@ export function QueryEditor({
   const [filtered, setFiltered] = useState<readonly Suggestion[]>([])
   const [selected, setSelected] = useState(0)
   const [caret, setCaret] = useState(0)
+  // playground keyboard contract: bare Enter NEVER accepts a suggestion — only
+  // Enter after the user has navigated (ArrowUp/Down) selects. Without this,
+  // typing "{" leaves the popup open and the next Enter swallows the newline
+  // and inserts a suggestion instead (the reported "skips like tab" bug).
+  const [navigated, setNavigated] = useState(false)
 
   const lineCount = useMemo(() => value.split('\n').length, [value])
   const highlighted = useMemo(() => highlightDocument(value), [value])
@@ -51,6 +56,7 @@ export function QueryEditor({
     setPopup(null)
     setFiltered([])
     setSelected(0)
+    setNavigated(false)
   }
 
   const refreshSuggestions = (text: string, caretIndex: number): void => {
@@ -60,7 +66,9 @@ export function QueryEditor({
     const lineStart = head.lastIndexOf('\n') + 1
     if (head.slice(lineStart).trimStart().startsWith('#')) { closePopup(); return }
     const prefix = prefixBeforeCaret(head)
-    if (prefix === '' && !/\(|\{\s*$/.test(head.slice(-2))) { closePopup(); return }
+    // open only for a typed identifier prefix or an explicit call "("; a bare
+    // "{" must NOT wake the popup up (that was half the skipping bug)
+    if (prefix === '' && !/\($/.test(head.slice(-1))) { closePopup(); return }
     const all = suggestionsAt(text, caretIndex, schema)
     const matching = prefix !== '' || all.length > 0
       ? all.filter((s) => (prefix.trim() === '' ? true : s.label.toLowerCase().startsWith(prefix.toLowerCase())))
@@ -72,6 +80,7 @@ export function QueryEditor({
     setPopup({ top: at.top + 20, left: at.left })
     setFiltered(matching.slice(0, 12))
     setSelected(0)
+    setNavigated(false)
   }
 
   const acceptSuggestion = (suggestion: Suggestion): void => {
@@ -95,14 +104,36 @@ export function QueryEditor({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (popup !== null && filtered.length > 0) {
-      if (event.key === 'ArrowDown') { event.preventDefault(); setSelected((s) => Math.min(s + 1, filtered.length - 1)); return }
-      if (event.key === 'ArrowUp') { event.preventDefault(); setSelected((s) => Math.max(s - 1, 0)); return }
-      if (event.key === 'Enter' || event.key === 'Tab') {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setSelected((s) => Math.min(s + 1, filtered.length - 1))
+        setNavigated(true)
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setSelected((s) => Math.max(s - 1, 0))
+        setNavigated(true)
+        return
+      }
+      if (event.key === 'Tab') {
         event.preventDefault()
         acceptSuggestion(filtered[selected]!)
         return
       }
+      if (event.key === 'Enter') {
+        if (navigated) {
+          event.preventDefault()
+          acceptSuggestion(filtered[selected]!)
+          return
+        }
+        // bare Enter: close and let the newline through
+        closePopup()
+        return
+      }
       if (event.key === 'Escape') { closePopup(); event.preventDefault(); return }
+      // structural punctuation closes the popup; typing must never fight it
+      if (['{', '}', '(', ')', ':', ','].includes(event.key)) closePopup()
     }
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       if (event.shiftKey) {

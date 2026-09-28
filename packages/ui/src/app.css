@@ -63,19 +63,15 @@ select {
     circle at 120% -20%,
     transparent 0,
     transparent 14px,
-    rgba(127, 166, 160, 0.05) 14px,
-    rgba(127, 166, 160, 0.05) 15px
+    rgba(127, 166, 160, 0.04) 14px,
+    rgba(127, 166, 160, 0.04) 15px
   );
 }
 
 /* the orchestrated moment: one contour pulse when a record lands */
 @keyframes land {
-  from {
-    box-shadow: inset 0 0 0 1px var(--color-brass);
-  }
-  to {
-    box-shadow: inset 0 0 0 1px transparent;
-  }
+  from { background-color: color-mix(in srgb, var(--color-brass) 7%, var(--color-ink-2)); }
+  to { background-color: var(--color-ink-2); }
 }
 .record-land {
   animation: land 900ms ease-out;
@@ -85,11 +81,6 @@ select {
   .record-land {
     animation: none;
   }
-}
-
-/* rotated denial stamp */
-.stamp-tilt {
-  transform: rotate(-1.2deg);
 }
 
 /* thin scrollbars for the instrument */
@@ -104,4 +95,10 @@ select {
 .editor-text {
   color: transparent;
   caret-color: var(--color-paper);
+}
+
+/* column resize handles: priority-grounded, keyboard-operable (aria separator) */
+.col-resize:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: -1px;
 }

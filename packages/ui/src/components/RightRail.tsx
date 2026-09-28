@@ -30,7 +30,7 @@ export function RightRail({ sdl }: { readonly sdl: string }) {
   )
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-l border-line bg-ink">
+    <aside className="flex w-full shrink-0 flex-col border-l border-line bg-ink">
       <div className="flex border-b border-line text-[11px]">
         {(['SCHEMA', 'DOCS'] as const).map((name) => (
           <button
@@ -87,7 +87,7 @@ export function RightRail({ sdl }: { readonly sdl: string }) {
             </div>
             <div>
               <div className="mb-1 font-mono text-paper">principals</div>
-              <div>request identity rides the x-cartoql-principal header — set it in the settings rail; typed denials (CQL_PERMISSION_DENIED) answer as nulls with error entries, never silent.</div>
+              <div>the request identity rides the x-cartoql-principal header — set any principal your gateway's claims resolve. Fields a principal can't access answer as nulls with typed codes (CQL_PERMISSION_DENIED), never silently.</div>
             </div>
             <div>
               <div className="mb-1 font-mono text-paper">security model</div>
