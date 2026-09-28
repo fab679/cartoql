@@ -13,8 +13,15 @@ jobs:
         image: ghcr.io/oxigraph/oxigraph:0.5.10
         ports:
           - 7878:7878
+      fuseki:
+        image: stain/jena-fuseki:latest
+        env:
+          ADMIN_PASSWORD: admin
+        ports:
+          - 3030:3030
     env:
       VERAX_TEST_SPARQL_ENDPOINT: http://localhost:7878/query
+      VERAX_TEST_SPARQL_ENDPOINTS: http://localhost:7878/query,http://localhost:3030/test/query
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +29,16 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Provision Fuseki dataset + named graphs (retries — services race)
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf -X POST --user admin:admin http://localhost:3030/$/datasets \
+              -d "dbName=test" -d "dbType=tdb2" -o /dev/null && break || sleep 5
+          done
+          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Averax%3Ashard%3Acore" \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/core/data.ttl
+          curl -sf --user admin:admin -X POST "http://localhost:3030/test/data?graph=urn%3Averax%3Ashard%3Atyping" \
+            -H 'content-type: text/turtle' --data-binary @corpus/shards/typing/data.ttl
       - name: Load gold + sec shards into Oxigraph (named graphs, D10)
         run: |
           curl -sf -X POST 'http://localhost:7878/store?graph=urn%3Averax%3Ashard%3Acore' \

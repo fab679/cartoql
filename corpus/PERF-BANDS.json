@@ -1,0 +1,5 @@
+{
+  "single-entity + 2 levels": { "p50": 150, "p99": 600 },
+  "paginated list (20)":      { "p50": 200, "p99": 800 },
+  "3-level nested":           { "p50": 500, "p99": 2000 }
+}
