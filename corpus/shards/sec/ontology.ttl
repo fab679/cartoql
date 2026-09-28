@@ -9,6 +9,7 @@ vsec:SensitiveNote a owl:Class ; rdfs:label "SensitiveNote" .
 
 vsec:name         a owl:DatatypeProperty ; rdfs:range xsd:string .
 vsec:salaryBudget a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+vsec:auditNote   a owl:DatatypeProperty ; rdfs:range xsd:string .
 vsec:noteOf       a owl:ObjectProperty ;
                   rdfs:domain vsec:SensitiveNote ;
                   rdfs:range  vsec:Organization .

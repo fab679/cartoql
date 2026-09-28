@@ -16,6 +16,11 @@ vshape:OrganizationShape a sh:NodeShape ;
         sh:datatype <http://www.w3.org/2001/XMLSchema#decimal> ;
         sh:minCount 0 ; sh:maxCount 1 ;
     ] ;
+    sh:property [
+        sh:path vsec:auditNote ;
+        sh:datatype <http://www.w3.org/2001/XMLSchema#string> ;
+        sh:minCount 0 ; sh:maxCount 1 ;
+    ] ;
     # inverse traversal: the sensitive notes *about* this organization —
     # @traversalScope-gated (existence-blind edge), stamp in stamps.json
     sh:property [

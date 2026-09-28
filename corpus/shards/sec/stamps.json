@@ -10,5 +10,9 @@
   {
     "onTraversal": "Organization.noteOfInverse",
     "requireGroup": "hr-comp"
+  },
+  {
+    "onField": "Organization.auditNote",
+    "requireRole": "reviewer"
   }
 ]

@@ -48,6 +48,12 @@ export interface PrincipalContext {
  */
 export interface PermissionView {
   readonly groups: ReadonlySet<string>
+  /**
+   * PLATFORM roles (docs/03: tenant-admin/reviewer/member/api-app/auditor —
+   * console powers only, never business visibility; a tenant-admin outside an
+   * interest group is denied that group's facts like anyone else).
+   */
+  readonly roles?: ReadonlySet<string>
   readonly viewVersion: string
   readonly allowAll?: boolean
 }
@@ -80,6 +86,8 @@ export type Constraint = `group:${string}` | `traversal:${string}`
  * Fail-closed: unknown kinds and malformed payloads → VX_SCOPE_UNRESOLVED (denied).
  */
 const MEMBER_PREFIXES = new Set(['group:', 'traversal:'])
+/** role: constraints read view.roles — the platform-claims channel (docs/03). */
+const ROLE_PREFIXES = new Set(['role:'])
 
 /**
  * The enforcement track a constraint selects — chosen by prefix, never by node
@@ -98,12 +106,17 @@ export function evaluateConstraint(constraint: string, view: PermissionView): Co
   const colon = constraint.indexOf(':')
   const kind = colon === -1 ? '' : constraint.slice(0, colon + 1)
   const value = colon === -1 ? '' : constraint.slice(colon + 1)
-  if (!MEMBER_PREFIXES.has(kind) || value === '') {
-    return { visible: false, code: 'VX_SCOPE_UNRESOLVED' } // fail closed on unknown kinds
+  if (MEMBER_PREFIXES.has(kind) && value !== '') {
+    return view.groups.has(value)
+      ? { visible: true }
+      : { visible: false, code: 'VX_PERMISSION_DENIED' }
   }
-  return view.groups.has(value)
-    ? { visible: true }
-    : { visible: false, code: 'VX_PERMISSION_DENIED' }
+  if (ROLE_PREFIXES.has(kind) && value !== '') {
+    return (view.roles?.has(value) ?? false)
+      ? { visible: true }
+      : { visible: false, code: 'VX_PERMISSION_DENIED' }
+  }
+  return { visible: false, code: 'VX_SCOPE_UNRESOLVED' } // fail closed on unknown kinds
 }
 
 /**
@@ -113,7 +126,9 @@ export function evaluateConstraint(constraint: string, view: PermissionView): Co
  * change with its own fixtures, and *then* it graduates into this filter.
  */
 export function securityConstraints(constraints: readonly string[]): readonly string[] {
-  return constraints.filter((c) => c.startsWith('group:') || c.startsWith('traversal:'))
+  return constraints.filter(
+    (c) => c.startsWith('group:') || c.startsWith('traversal:') || c.startsWith('role:'),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -147,17 +162,24 @@ export class OpenResolver implements PermissionResolver {
 export class StaticResolver implements PermissionResolver {
   readonly provider = 'static' as const
   readonly #map: ReadonlyMap<string, readonly string[]>
+  readonly #roles: ReadonlyMap<string, readonly string[]>
   readonly #viewVersion: string
 
-  constructor(map: Readonly<Record<string, readonly string[]>>, viewVersion = 'static-1') {
+  constructor(
+    map: Readonly<Record<string, readonly string[]>>,
+    viewVersion = 'static-1',
+    roles: Readonly<Record<string, readonly string[]>> = {},
+  ) {
     this.#map = new Map(Object.entries(map))
+    this.#roles = new Map(Object.entries(roles))
     this.#viewVersion = viewVersion
   }
 
   async resolve(principal: PrincipalContext): Promise<PermissionView> {
     // unknown principals resolve empty (fail-closed posture), never to open
     const groups = this.#map.get(principal.principalId) ?? []
-    return { groups: new Set(groups), viewVersion: this.#viewVersion }
+    const roles = this.#roles.get(principal.principalId) ?? []
+    return { groups: new Set(groups), roles: new Set(roles), viewVersion: this.#viewVersion }
   }
 }
 

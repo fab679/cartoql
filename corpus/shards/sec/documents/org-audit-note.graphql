@@ -1,0 +1,12 @@
+# @requireRole (docs/03): platform-role gate — the reviewer console power. Every
+# principal evaluates: reviewer sees, interest-group members and nobodies don't.
+query OrgAuditNote {
+  organizations(first: 10) {
+    edges {
+      node {
+        name
+        auditNote
+      }
+    }
+  }
+}

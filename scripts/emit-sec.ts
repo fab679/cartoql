@@ -38,6 +38,10 @@ const PRINCIPALS: Record<string, Record<string, string[]>> = {
   alice: { alice: ['hr-comp', 'legal'] },
   bob: { bob: [] },
   carol: { carol: ['hr-comp'] }, // traversal-capable, no legal — the edge-vs-entity fixture
+  'site-reviewer': { 'site-reviewer': [] }, // no interest groups — ONLY the reviewer platform role
+}
+const PRINCIPAL_ROLES: Record<string, readonly string[]> = {
+  'site-reviewer': ['reviewer'],
 }
 
 for (const file of readdirSync(join(shard, 'documents')).filter((f) => f.endsWith('.graphql')).sort()) {
@@ -47,7 +51,13 @@ for (const file of readdirSync(join(shard, 'documents')).filter((f) => f.endsWit
   const base = file.replace(/\.graphql$/, '')
   writeFileSync(join(shard, 'expected/plans', `${base}.json`), canonicalJson(plan))
   for (const [principalId, map] of Object.entries(PRINCIPALS)) {
-    const view = { groups: new Set(map[principalId]!), viewVersion: 'static-1' }
+    const view = {
+      groups: new Set(map[principalId]!),
+      ...(PRINCIPAL_ROLES[principalId] !== undefined
+        ? { roles: new Set(PRINCIPAL_ROLES[principalId]) }
+        : {}),
+      viewVersion: 'static-1',
+    }
     const response = await adapter.run(plan, module_, variables, { view, principalId })
     writeFileSync(
       join(shard, 'expected/responses', `${base}::${principalId}.json`),

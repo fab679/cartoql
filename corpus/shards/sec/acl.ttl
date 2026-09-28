@@ -8,3 +8,6 @@ vacl:principal:alice vacl:memberOf vacl:group:hr-comp .
 vacl:principal:alice vacl:memberOf vacl:group:legal .
 # bob holds no groups — every gate evaluates false against this graph
 vacl:principal:carol vacl:memberOf vacl:group:hr-comp . # traversal-capable, no legal
+# platform roles fixture (reviewer holds the console power; alice does NOT)
+@prefix vaclr: <urn:verax:role:> .
+vaclr:principal:site-reviewer vaclr:memberOf vaclr:role:reviewer .

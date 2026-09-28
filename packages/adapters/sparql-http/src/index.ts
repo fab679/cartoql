@@ -102,15 +102,26 @@ export const ACL_MEMBER_OF = 'urn:verax:acl:memberOf'
 export const groupIri = (group: string): string => `urn:verax:acl:group:${group}`
 export const principalIri = (principalId: string): string => `urn:verax:acl:principal:${principalId}`
 
-/** SPARQL gate for one membership constraint (group:/traversal: alike), referencing the transport-bound principal. */
+/** Platform-role membership predicate for store-side role gates (kernel v1 vocabulary). */
+export const ACL_ROLE_MEMBER_OF = 'urn:verax:role:memberOf'
+export const roleIri = (role: string): string => `urn:verax:acl:role:${role}`
+
+/**
+ * SPARQL gate for one constraint (group:/traversal:/role: alike), referencing
+ * the transport-bound principal. Roles join the platform-claims vocabulary —
+ * role assignments are synced facts in the same ACL graph (embedder model).
+ */
 function aclGate(constraint: string, aclGraph: string): string {
   const colon = constraint.indexOf(':')
   const prefix = constraint.slice(0, colon + 1)
-  const group = constraint.slice(colon + 1)
-  if (prefix !== 'group:' && prefix !== 'traversal:') {
-    throw new ExecutorError(`unknown constraint kind in gate emission (${constraint}) — refusing`)
+  const value = constraint.slice(colon + 1)
+  if (prefix === 'group:' || prefix === 'traversal:') {
+    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_MEMBER_OF}> <${groupIri(value)}> } })`
   }
-  return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_MEMBER_OF}> <${groupIri(group)}> } })`
+  if (prefix === 'role:') {
+    return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_ROLE_MEMBER_OF}> <${roleIri(value)}> } })`
+  }
+  throw new ExecutorError(`unknown constraint kind in gate emission (${constraint}) — refusing`)
 }
 
 export function projectRoot(

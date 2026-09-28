@@ -21,9 +21,19 @@ describe('kernel: evaluateConstraint — the single choke point (docs/03)', () =
 
   it('fail-closed: unknown constraint kinds and malformed payloads → VX_SCOPE_UNRESOLVED, never ignored', () => {
     const view = { groups: new Set(['hr-comp']), viewVersion: 'v1' }
-    expect(evaluateConstraint('role:admin', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
     expect(evaluateConstraint('group:', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
     expect(evaluateConstraint('nonsense', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
+    expect(evaluateConstraint('bogus-kind:x', view)).toEqual({ visible: false, code: 'VX_SCOPE_UNRESOLVED' })
+  })
+
+  it('role: reads the PLATFORM claim channel — grants console powers, never group facts', () => {
+    const reviewer = { groups: new Set<string>(), roles: new Set(['reviewer']), viewVersion: 'v1' }
+    expect(evaluateConstraint('role:reviewer', reviewer)).toEqual({ visible: true })
+    // a role does not satisfy interest-group constraints (docs/03: platform
+    // roles can never grant business visibility)
+    expect(evaluateConstraint('group:hr-comp', reviewer)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
+    const member = { groups: new Set<string>(), viewVersion: 'v1' } // no roles claim at all
+    expect(evaluateConstraint('role:reviewer', member)).toEqual({ visible: false, code: 'VX_PERMISSION_DENIED' })
   })
 
   it('allowAll is the open posture alone — it satisfies every constraint', () => {

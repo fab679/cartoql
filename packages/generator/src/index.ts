@@ -65,6 +65,8 @@ export interface GeneratedField {
   itemTypeName?: string
   /** Generator-stamped group gate, rendered as @requireGroup (docs/03). */
   stamp?: string
+  /** Which SDL directive renders the stamp (requireGroup default; role/hiddenUnless vocabulary). */
+  stampDirective?: string
   /** Edge-level gate, rendered as @traversalScope — class-typed fields only. */
   traversalStamp?: string
 }
@@ -111,13 +113,20 @@ export interface GenerateSdlOptions {
   stamps?: readonly StampRule[]
 }
 
-/** One stamp: a group gate at a field/type level, or a traversal gate on an edge. */
+/** One stamp: a group gate at field/type level, a role gate, or a traversal gate. */
 export interface StampRule {
   readonly onField?: string
   readonly onType?: string
   /** Edge-level gate: the constraint enforces existence-blind (docs/@traversalScope). */
   readonly onTraversal?: string
-  readonly requireGroup: string
+  readonly requireGroup?: string
+  /** Platform-role gate (@requireRole — console powers vocabulary, docs/03). */
+  readonly requireRole?: string
+  /**
+   * @hiddenUnless: visible-track denial alias — identical semantics to
+   * requireGroup (null + typed error), kept for docs/03 vocabulary completeness.
+   */
+  readonly hiddenUnless?: string
 }
 
 export interface GeneratedSdl {
@@ -461,11 +470,19 @@ function readProperty(shapes: Store, propertyShape: Term): RawProperty {
  */
 function applyStamps(types: readonly GeneratedType[], stamps: readonly StampRule[]): void {
   const byType = new Map(types.map((t2) => [t2.name, t2]))
+  const reasonOf = (stamp: StampRule): string =>
+    stamp.requireGroup !== undefined
+      ? stamp.requireGroup
+      : stamp.requireRole !== undefined
+        ? stamp.requireRole // bare: the directive arg carries it; the compiler adds the role: channel prefix once
+        : stamp.hiddenUnless !== undefined
+          ? stamp.hiddenUnless
+          : ((): never => { throw new GenerationError('stamp needs one of requireGroup/requireRole/hiddenUnless') })()
   for (const stamp of stamps) {
     if (stamp.onType) {
       const target = byType.get(stamp.onType)
       if (!target) throw new GenerationError(`stamp targets unknown type "${stamp.onType}"`)
-      target.typeStamp = stamp.requireGroup
+      target.typeStamp = reasonOf(stamp)
     } else if (stamp.onTraversal) {
       const [typeName, fieldName] = stamp.onTraversal.split('.')
       const target = byType.get(typeName ?? '')
@@ -486,7 +503,12 @@ function applyStamps(types: readonly GeneratedType[], stamps: readonly StampRule
       if (!target || !field) {
         throw new GenerationError(`stamp targets unknown field "${stamp.onField}"`)
       }
-      field.stamp = stamp.requireGroup
+      // resolve the reason + which SDL directive communicates it (docs/03
+      // vocabulary; hiddenUnless is the visible-track twin of requireGroup)
+      const reason = reasonOf(stamp)
+      field.stamp = reason
+      if (stamp.requireRole !== undefined) field.stampDirective = '@requireRole'
+      if (stamp.hiddenUnless !== undefined) field.stampDirective = '@hiddenUnless'
     } else {
       throw new GenerationError('stamp must provide onType or onField')
     }
@@ -538,6 +560,8 @@ function renderSdl(
     lines.push('# Security-stamped module: directives below are generator-originated (docs/03 rule 1).')
     lines.push('directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT')
     lines.push('directive @traversalScope(group: String!) on FIELD_DEFINITION')
+    lines.push('directive @requireRole(role: String!) on FIELD_DEFINITION | OBJECT')
+    lines.push('directive @hiddenUnless(group: String!) on FIELD_DEFINITION')
     lines.push('')
   }
   lines.push('')
@@ -576,7 +600,9 @@ function renderSdl(
     const implementsClause = parentOfNamed.has(t.name) ? ` implements ${parentOfNamed.get(t.name)}` : ''
     lines.push(`type ${t.name}${typeDirective}${implementsClause} {`)
     for (const f of t.fields) {
-      const fieldDirective = f.stamp ? ` @requireGroup(group: "${f.stamp}")` : ''
+      const directive = f.stampDirective ?? '@requireGroup'
+      const argName = directive === '@requireRole' ? 'role' : 'group'
+      const fieldDirective = f.stamp ? ` ${directive}(${argName}: "${f.stamp}")` : ''
       const traversalDirective = f.traversalStamp ? ` @traversalScope(group: "${f.traversalStamp}")` : ''
       lines.push(`  ${f.name}: ${f.typeRef}${fieldDirective}${traversalDirective}`)
     }

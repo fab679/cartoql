@@ -94,7 +94,7 @@ export interface VeraxModule {
  * with the typed code — ignored-not-silently is the failure mode that breeds
  * both support tickets and false confidence.
  */
-const REGISTRY_DIRECTIVES = new Set(['requireGroup', 'traversalScope'])
+const REGISTRY_DIRECTIVES = new Set(['requireGroup', 'traversalScope', 'requireRole', 'hiddenUnless'])
 const VX_DIRECTIVE_REJECTED = 'VX_DIRECTIVE_REJECTED'
 
 export function compileDocument(source: string, module: VeraxModule): Plan {
@@ -598,15 +598,19 @@ function compileEntityChildren(set: SelectionSetNode, typeName: string, module: 
 function directivesToConstraints(astNode: { directives?: readonly { name: { value: string }; arguments?: readonly { name: { value: string }; value: { kind: string; value?: unknown } }[] }[] } | undefined | null): string[] {
   const out: string[] = []
   for (const directive of astNode?.directives ?? []) {
-    if (directive.name.value !== 'requireGroup' && directive.name.value !== 'traversalScope') continue
-    const groupArg = directive.arguments?.find((a) => a.name.value === 'group')
-    const group = groupArg && 'value' in groupArg.value ? String(groupArg.value.value ?? '') : ''
-    if (group === '') {
-      throw new CompilerError(`stamped @${directive.name.value} without a group argument — build drift, refusing`)
+    const name = directive.name.value
+    if (name !== 'requireGroup' && name !== 'traversalScope' && name !== 'requireRole' && name !== 'hiddenUnless') continue
+    const argName = name === 'requireRole' ? 'role' : 'group'
+    const groupArg = directive.arguments?.find((a) => a.name.value === argName)
+    const value = groupArg && 'value' in groupArg.value ? String(groupArg.value.value ?? '') : ''
+    if (value === '') {
+      throw new CompilerError(`stamped @${name} without its ${argName} argument — build drift, refusing`)
     }
-    // prefix = the enforcement track: visible denial vs existence-blind edge
-    const prefix = directive.name.value === 'traversalScope' ? 'traversal:' : 'group:'
-    out.push(`${prefix}${group}`)
+    // prefix = the claim channel AND enforcement track (docs/03):
+    // group:/hiddenUnless: → membership, visible denial; traversal: → membership,
+    // existence-blind edge; role: → platform claims, visible denial
+    const prefix = name === 'traversalScope' ? 'traversal:' : name === 'requireRole' ? 'role:' : 'group:'
+    out.push(`${prefix}${value}`)
   }
   return out
 }

@@ -3,11 +3,14 @@
 # Security-stamped module: directives below are generator-originated (docs/03 rule 1).
 directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT
 directive @traversalScope(group: String!) on FIELD_DEFINITION
+directive @requireRole(role: String!) on FIELD_DEFINITION | OBJECT
+directive @hiddenUnless(group: String!) on FIELD_DEFINITION
 
 
 scalar VeraxDecimal
 
 type Organization {
+  auditNote: String @requireRole(role: "reviewer")
   name: String!
   noteOfInverse: [SensitiveNote!] @traversalScope(group: "hr-comp")
   salaryBudget: VeraxDecimal @requireGroup(group: "hr-comp")
@@ -40,6 +43,8 @@ type PageInfo {
 }
 
 enum OrganizationOrderBy {
+  AUDIT_NOTE_ASC
+  AUDIT_NOTE_DESC
   NAME_ASC
   NAME_DESC
   SALARY_BUDGET_ASC
@@ -53,7 +58,7 @@ enum SensitiveNoteOrderBy {
 
 type Query {
   organization(iri: ID!): Organization
-  organizations(name: String, salaryBudget: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
+  organizations(auditNote: String, name: String, salaryBudget: String, first: Int = 20, after: String, orderBy: OrganizationOrderBy): OrganizationConnection
   sensitiveNote(iri: ID!): SensitiveNote
   sensitiveNotes(name: String, first: Int = 20, after: String, orderBy: SensitiveNoteOrderBy): SensitiveNoteConnection
 }
