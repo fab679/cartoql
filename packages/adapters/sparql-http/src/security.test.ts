@@ -53,7 +53,10 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
     expect(request.query).toContain('urn:verax:shard:sec-acl')
     expect(request.query).toContain(ACL_MEMBER_OF)
     expect(request.query).toContain(groupIri('hr-comp'))
-    expect(request.query).toMatch(/OPTIONAL \{ \?v0_e <[^>]+salaryBudget> \?v0_e_1_v\n\s+FILTER\(EXISTS \{ GRAPH <urn:verax:shard:sec-acl>/)
+    const salaryOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e <https://verax.example/corpus/sec#salaryBudget> ?v0_e_1_v')
+    const salaryGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:verax:shard:sec-acl>', salaryOptionalAt)
+    expect(salaryOptionalAt).toBeGreaterThan(-1)
+    expect(salaryGateAt).toBeGreaterThan(salaryOptionalAt) // gate after the triple, inside the OPTIONAL
     // gate after the field triple, inside the OPTIONAL
     expect(request.query.indexOf('?v0_e_1_v')).toBeLessThan(request.query.indexOf('FILTER(EXISTS'))
     // principal rides the guarded values transport, never query text interpolation
@@ -80,6 +83,23 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
     await expect(adapter.run(plan, module_, {})).rejects.toThrow(/open posture makes stamps meaningless/)
     const noAclModule = { ...module_, aclGraph: undefined }
     await expect(adapter.run(plan, noAclModule, {}, context('bob', []))).rejects.toThrow(/no aclGraph/)
+  })
+
+  it('traversal gates wrap the class-field OPTIONAL like field gates (same in-store mechanism)', () => {
+    const source = readFileSync(join(shard, 'documents/org-notes.graphql'), 'utf-8')
+    const plan = compileDocument(source, module_)
+    const root = plan.roots.find((r) => r.kind === 'EntityLookup')
+    if (!root || root.kind !== 'EntityLookup') throw new Error('bad root')
+    const request = projectRoot(root, 0, {}, 'values', {
+      security: context('bob', []),
+      aclGraph: 'urn:verax:shard:sec-acl',
+    })
+    // the traversal constraint maps through the same FILTER EXISTS join
+    expect(request.query).toContain(groupIri('hr-comp'))
+    const notesOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e ^<https://verax.example/corpus/sec#noteOf> ?v0_e_1 .')
+    const notesGateAt = request.query.indexOf('FILTER(EXISTS { GRAPH <urn:verax:shard:sec-acl>', notesOptionalAt)
+    expect(notesOptionalAt).toBeGreaterThan(-1)
+    expect(notesGateAt).toBeGreaterThan(notesOptionalAt) // same in-store gate mechanism
   })
 
   it('kernel-supplied principal ids get the same term guard as client values', () => {

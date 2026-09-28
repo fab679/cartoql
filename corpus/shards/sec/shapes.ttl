@@ -15,6 +15,13 @@ vshape:OrganizationShape a sh:NodeShape ;
         sh:path vsec:salaryBudget ;
         sh:datatype <http://www.w3.org/2001/XMLSchema#decimal> ;
         sh:minCount 0 ; sh:maxCount 1 ;
+    ] ;
+    # inverse traversal: the sensitive notes *about* this organization —
+    # @traversalScope-gated (existence-blind edge), stamp in stamps.json
+    sh:property [
+        sh:path [ sh:inversePath vsec:noteOf ] ;
+        sh:class vsec:SensitiveNote ;
+        sh:minCount 0 ;
     ] .
 
 vshape:SensitiveNoteShape a sh:NodeShape ;

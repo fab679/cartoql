@@ -40,7 +40,7 @@ import {
   type StoreAdapter,
   type VeraxError,
 } from '../../../core/src/executor.js'
-import { evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
+import { constraintTrack, evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
 import type { VeraxModule } from '../../../core/src/compiler.js'
 
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
@@ -184,12 +184,17 @@ export class ReferenceAdapter implements StoreAdapter {
     security: SecurityContext,
     errors: VeraxError[],
   ): unknown {
-    // Field-level denial — the visible track: explicitly selected, so null plus a
-    // typed error. Never silent (a silent null reads as corruption, not privacy),
-    // never an existence leak (the *entity* stays; only this field refuses).
+    // Two tracks by constraint prefix (docs/03): `group:` → visible denial (the
+    // client selected this field: null plus a typed error — a silent null would
+    // read as corruption, not privacy); `traversal:` → existence-blind edge (the
+    // related entity never materializes, and NO error entry appears — the edge's
+    // existence itself is what was hidden).
     for (const c of securityConstraints(field.constraints)) {
       const decision = evaluateConstraint(c, security.view)
       if (!decision.visible) {
+        if (constraintTrack(c) === 'existence-blind') {
+          return field.cardinality === 'single' ? null : []
+        }
         errors.push({
           message: `field ${field.field} requires authorization the principal does not hold`,
           path: field.field,

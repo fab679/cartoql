@@ -1,0 +1,12 @@
+query OrgNotes {
+  organizations(first: 10) {
+    edges {
+      node {
+        name
+        noteOfInverse {
+          name
+        }
+      }
+    }
+  }
+}

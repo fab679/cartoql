@@ -41,7 +41,7 @@ import {
 } from '../../../core/src/executor.js'
 import type { VeraxModule } from '../../../core/src/compiler.js'
 import type { AlgebraNode, EntityLookup, FieldExpansion, Plan } from '../../../core/src/ir.js'
-import { evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
+import { constraintTrack, evaluateConstraint, securityConstraints } from '../../../core/src/security.js'
 
 /** Docs/06 D2-adjacent guard: the inlined LIMIT literal lives inside this bound. */
 export const MAX_PAGE = 500
@@ -101,9 +101,14 @@ export const ACL_MEMBER_OF = 'urn:verax:acl:memberOf'
 export const groupIri = (group: string): string => `urn:verax:acl:group:${group}`
 export const principalIri = (principalId: string): string => `urn:verax:acl:principal:${principalId}`
 
-/** SPARQL gate for one group constraint, referencing the transport-bound principal. */
+/** SPARQL gate for one membership constraint (group:/traversal: alike), referencing the transport-bound principal. */
 function aclGate(constraint: string, aclGraph: string): string {
-  const group = constraint.slice('group:'.length)
+  const colon = constraint.indexOf(':')
+  const prefix = constraint.slice(0, colon + 1)
+  const group = constraint.slice(colon + 1)
+  if (prefix !== 'group:' && prefix !== 'traversal:') {
+    throw new ExecutorError(`unknown constraint kind in gate emission (${constraint}) — refusing`)
+  }
   return `FILTER(EXISTS { GRAPH <${aclGraph}> { ?verax_principal <${ACL_MEMBER_OF}> <${groupIri(group)}> } })`
 }
 
@@ -500,14 +505,24 @@ function buildEntity(
   const entity: Record<string, unknown> = {}
   for (const f of fields) {
     const name = f.node.field.split('.')[1]!
-    // View-based denial, mirroring the reference adapter exactly (the visible
-    // track: null plus a typed error; the store-side gate already ensured the
-    // rows agree). Entity gating, by contrast, never reaches here — it filtered
-    // populations store-side: zero rows in, zero entries out (blind track).
-    const denied = security !== undefined && securityConstraints(f.node.constraints).some(
-      (c) => !evaluateConstraint(c, security.view).visible,
-    )
-    if (denied) {
+    // Track by prefix, mirroring the reference adapter exactly (parity compares
+    // data AND errors): `group:` → visible denial (null + typed error);
+    // `traversal:` → existence-blind edge (no bindings, no error — the store-side
+    // gate already withheld the rows for exactly this reason).
+    let deniedTrack: 'visible-denial' | 'existence-blind' | null = null
+    if (security !== undefined) {
+      for (const c of securityConstraints(f.node.constraints)) {
+        if (!evaluateConstraint(c, security.view).visible) {
+          deniedTrack = constraintTrack(c)
+          break
+        }
+      }
+    }
+    if (deniedTrack === 'existence-blind') {
+      entity[name] = f.node.cardinality === 'single' ? null : []
+      continue
+    }
+    if (deniedTrack === 'visible-denial') {
       errors.push({
         message: `field ${f.node.field} requires authorization the principal does not hold`,
         path: f.node.field,

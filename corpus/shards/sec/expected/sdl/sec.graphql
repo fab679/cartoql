@@ -2,12 +2,14 @@
 # Reviewed gold-shard snapshot (docs/09). Regenerate via `npm run corpus:snapshot:core`.
 # Security-stamped module: directives below are generator-originated (docs/03 rule 1).
 directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT
+directive @traversalScope(group: String!) on FIELD_DEFINITION
 
 
 scalar VeraxDecimal
 
 type Organization {
   name: String!
+  noteOfInverse: [SensitiveNote!] @traversalScope(group: "hr-comp")
   salaryBudget: VeraxDecimal @requireGroup(group: "hr-comp")
 }
 type OrganizationConnection {

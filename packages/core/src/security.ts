@@ -54,11 +54,14 @@ export type ConstraintDecision =
   | { readonly visible: false; readonly code: 'VX_PERMISSION_DENIED' | 'VX_SCOPE_UNRESOLVED' }
 
 /**
- * Constraint kinds the kernel v1 understands. `group:` backs @requireGroup; a new
- * prefix is a registry-level change requiring its own conformance fixtures —
- * not a string someone appends.
+ * Constraint kinds the kernel understands. `group:` backs @requireGroup (the
+ * visible denial track); `traversal:` backs @traversalScope (the existence-blind
+ * edge track — the related entity never materializes and no error entry appears).
+ * Same membership check underneath; the prefix selects the failure semantics.
+ * A new prefix is a registry-level change requiring its own conformance
+ * fixtures — not a string someone appends.
  */
-export type Constraint = `group:${string}`
+export type Constraint = `group:${string}` | `traversal:${string}`
 
 /**
  * Evaluate one constraint against one view — the single choke point for every
@@ -66,13 +69,27 @@ export type Constraint = `group:${string}`
  *
  * Fail-closed: unknown kinds and malformed payloads → VX_SCOPE_UNRESOLVED (denied).
  */
+const MEMBER_PREFIXES = new Set(['group:', 'traversal:'])
+
+/**
+ * The enforcement track a constraint selects — chosen by prefix, never by node
+ * shape (docs/03): `group:` → visible denial (null + typed error);
+ * `traversal:` → existence-blind edge (related entities never materialize,
+ * and no error entry appears).
+ */
+export function constraintTrack(constraint: string): 'visible-denial' | 'existence-blind' {
+  const colon = constraint.indexOf(':')
+  const prefix = colon === -1 ? constraint : constraint.slice(0, colon + 1)
+  return prefix === 'traversal:' ? 'existence-blind' : 'visible-denial'
+}
+
 export function evaluateConstraint(constraint: string, view: PermissionView): ConstraintDecision {
   if (view.allowAll === true) return { visible: true }
   const colon = constraint.indexOf(':')
-  const kind = colon === -1 ? constraint : constraint.slice(0, colon + 1)
+  const kind = colon === -1 ? '' : constraint.slice(0, colon + 1)
   const value = colon === -1 ? '' : constraint.slice(colon + 1)
-  if (kind !== 'group:' || value === '') {
-    return { visible: false, code: 'VX_SCOPE_UNRESOLVED' }
+  if (!MEMBER_PREFIXES.has(kind) || value === '') {
+    return { visible: false, code: 'VX_SCOPE_UNRESOLVED' } // fail closed on unknown kinds
   }
   return view.groups.has(value)
     ? { visible: true }
@@ -86,7 +103,7 @@ export function evaluateConstraint(constraint: string, view: PermissionView): Co
  * change with its own fixtures, and *then* it graduates into this filter.
  */
 export function securityConstraints(constraints: readonly string[]): readonly string[] {
-  return constraints.filter((c) => c.startsWith('group:'))
+  return constraints.filter((c) => c.startsWith('group:') || c.startsWith('traversal:'))
 }
 
 // ---------------------------------------------------------------------------

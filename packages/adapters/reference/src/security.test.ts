@@ -112,6 +112,31 @@ describe('security corpus: entity gating is existence-blind (docs/03 rule 3)', (
   })
 })
 
+describe('security corpus: @traversalScope — the existence-blind edge track (docs/03)', () => {
+  it('a denied traversal never materializes related entities AND reports no error, in the same response where field denials do report errors', async () => {
+    const response = await run('org-notes.graphql', BOB())
+    const edges = (response.data['organizations'] as { edges: Array<{ node: { name: string; noteOfInverse: unknown[] } }> }).edges
+    // indistinguishable from organizations that simply have no notes
+    expect(edges.map((e) => e.node.noteOfInverse)).toEqual([[], [], []])
+    expect(response.errors).toEqual([])
+
+    // and the contrast, one document family away: salaryBudget denial is VISIBLE
+    const orgs = await run('orgs.graphql', BOB())
+    expect(orgs.errors.map((e) => e.extensions.code)).toEqual(['VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED', 'VX_PERMISSION_DENIED'])
+  })
+
+  it('an allowed traversal expands normally — even without the related type\'s entity gate (v0: entity gating is root-level, documented)', async () => {
+    const carol = await run('org-notes.graphql', createContext('carol', ['hr-comp']))
+    const edges = (carol.data['organizations'] as { edges: Array<{ node: { name: string; noteOfInverse: Array<{ name: string }> } }> }).edges
+    expect(edges.flatMap((e) => e.node.noteOfInverse.map((n) => n.name)).sort()).toEqual(['Alpha audit remark', 'Beta compliance check'])
+    expect(carol.errors).toEqual([])
+  })
+})
+
+function createContext(principalId: string, groups: readonly string[]): SecurityContext {
+  return { principalId, view: { groups: new Set(groups), viewVersion: 'static-1' } }
+}
+
 describe('security corpus: snapshot discipline', () => {
   it('every response snapshot matches byte-for-byte after canonical serialization', async () => {
     const { readdirSync } = await import('node:fs')

@@ -7,3 +7,4 @@
 vacl:principal:alice vacl:memberOf vacl:group:hr-comp .
 vacl:principal:alice vacl:memberOf vacl:group:legal .
 # bob holds no groups — every gate evaluates false against this graph
+vacl:principal:carol vacl:memberOf vacl:group:hr-comp . # traversal-capable, no legal

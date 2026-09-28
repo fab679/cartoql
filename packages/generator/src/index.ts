@@ -61,6 +61,8 @@ export interface GeneratedField {
   itemTypeName?: string
   /** Generator-stamped group gate, rendered as @requireGroup (docs/03). */
   stamp?: string
+  /** Edge-level gate, rendered as @traversalScope — class-typed fields only. */
+  traversalStamp?: string
 }
 
 export interface GeneratedType {
@@ -100,10 +102,12 @@ export interface GenerateSdlOptions {
   stamps?: readonly StampRule[]
 }
 
-/** One stamp: a group gate at a field ({ onField: 'Person.salary' }) or type level. */
+/** One stamp: a group gate at a field/type level, or a traversal gate on an edge. */
 export interface StampRule {
   readonly onField?: string
   readonly onType?: string
+  /** Edge-level gate: the constraint enforces existence-blind (docs/@traversalScope). */
+  readonly onTraversal?: string
   readonly requireGroup: string
 }
 
@@ -381,6 +385,19 @@ function applyStamps(types: readonly GeneratedType[], stamps: readonly StampRule
       const target = byType.get(stamp.onType)
       if (!target) throw new GenerationError(`stamp targets unknown type "${stamp.onType}"`)
       target.typeStamp = stamp.requireGroup
+    } else if (stamp.onTraversal) {
+      const [typeName, fieldName] = stamp.onTraversal.split('.')
+      const target = byType.get(typeName ?? '')
+      const field = target?.fields.find((f) => f.name === fieldName)
+      if (!target || !field) {
+        throw new GenerationError(`traversal stamp targets unknown field "${stamp.onTraversal}"`)
+      }
+      if (field.itemTypeName === undefined) {
+        throw new GenerationError(
+          `traversal stamp on ${stamp.onTraversal} — @traversalScope applies to object-typed fields only (docs/03)`,
+        )
+      }
+      field.traversalStamp = stamp.requireGroup
     } else if (stamp.onField) {
       const [typeName, fieldName] = stamp.onField.split('.')
       const target = byType.get(typeName ?? '')
@@ -412,6 +429,7 @@ function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: re
   if (stamps.length > 0) {
     lines.push('# Security-stamped module: directives below are generator-originated (docs/03 rule 1).')
     lines.push('directive @requireGroup(group: String!) on FIELD_DEFINITION | OBJECT')
+    lines.push('directive @traversalScope(group: String!) on FIELD_DEFINITION')
     lines.push('')
   }
   lines.push('')
@@ -425,7 +443,8 @@ function renderSdl(moduleId: string, types: readonly GeneratedType[], stamps: re
     lines.push(`type ${t.name}${typeDirective} {`)
     for (const f of t.fields) {
       const fieldDirective = f.stamp ? ` @requireGroup(group: "${f.stamp}")` : ''
-      lines.push(`  ${f.name}: ${f.typeRef}${fieldDirective}`)
+      const traversalDirective = f.traversalStamp ? ` @traversalScope(group: "${f.traversalStamp}")` : ''
+      lines.push(`  ${f.name}: ${f.typeRef}${fieldDirective}${traversalDirective}`)
     }
     lines.push('}')
     // Connection/edge pair for the paginated root (D2: cursor-based, default 20).

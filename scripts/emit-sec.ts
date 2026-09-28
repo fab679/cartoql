@@ -37,6 +37,7 @@ const adapter = ReferenceAdapter.fromTurtle(data, module_.datasetGraphs)
 const PRINCIPALS: Record<string, Record<string, string[]>> = {
   alice: { alice: ['hr-comp', 'legal'] },
   bob: { bob: [] },
+  carol: { carol: ['hr-comp'] }, // traversal-capable, no legal — the edge-vs-entity fixture
 }
 
 for (const file of readdirSync(join(shard, 'documents')).filter((f) => f.endsWith('.graphql')).sort()) {

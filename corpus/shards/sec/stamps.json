@@ -1,4 +1,14 @@
 [
-  { "onField": "Organization.salaryBudget", "requireGroup": "hr-comp" },
-  { "onType": "SensitiveNote", "requireGroup": "legal" }
+  {
+    "onField": "Organization.salaryBudget",
+    "requireGroup": "hr-comp"
+  },
+  {
+    "onType": "SensitiveNote",
+    "requireGroup": "legal"
+  },
+  {
+    "onTraversal": "Organization.noteOfInverse",
+    "requireGroup": "hr-comp"
+  }
 ]
