@@ -1,222 +1,118 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { parse, print, type GraphQLSchema } from 'graphql'
-import { caretCoordinates, prefixBeforeCaret } from '../utility/caret'
-import { highlightDocument } from '../utility/highlight'
-import { suggestionsAt, type Suggestion } from '../utility/suggest'
+import { useEffect, useRef } from 'react'
+import { EditorState, type Extension } from '@codemirror/state'
+import { EditorView, keymap, lineNumbers } from '@codemirror/view'
+import { basicSetup } from 'codemirror'
+import { autocompletion, closeBrackets } from '@codemirror/autocomplete'
+import { graphql /* , graphqlLinter */ } from 'cm6-graphql'
+import { lintGutter } from '@codemirror/lint'
+import type { GraphQLSchema } from 'graphql'
+import { print, parse } from 'graphql'
 
 /**
- * Editor: gutter + highlighted overlay under a transparent-text textarea, plus
- * the schema-aware autocomplete popup (up/down/enter/tab/escape — playground
- * keyboard semantics). Prettify lives here too so ctrl+shift+enter feels native.
+ * The editor: CodeMirror 6 + cm6-graphql (graphql-language-service — the engine
+ * GraphiQL-class consoles use). Braces auto-close (the reported typing pain),
+ * parse diagnostics render in-editor with line positions, completions come
+ * from the same schema the rail displays. ctrl+enter runs; ctrl+shift+enter
+ * prettifies (parse errors surface verbatim in the console notice, not as a
+ * blunt "refused").
  */
 export function QueryEditor({
   value,
   onChange,
   onSubmit,
+  onNotice,
   schema,
 }: {
   readonly value: string
   readonly onChange: (text: string) => void
   readonly onSubmit: () => void
+  readonly onNotice: (message: string | null) => void
   readonly schema: GraphQLSchema | null
 }) {
-  const gutterRef = useRef<HTMLPreElement>(null)
-  const overlayRef = useRef<HTMLPreElement>(null)
-  const viewRef = useRef<HTMLTextAreaElement>(null)
-  const [popup, setPopup] = useState<{ top: number; left: number } | null>(null)
-  const [filtered, setFiltered] = useState<readonly Suggestion[]>([])
-  const [selected, setSelected] = useState(0)
-  const [caret, setCaret] = useState(0)
-  // playground keyboard contract: bare Enter NEVER accepts a suggestion — only
-  // Enter after the user has navigated (ArrowUp/Down) selects. Without this,
-  // typing "{" leaves the popup open and the next Enter swallows the newline
-  // and inserts a suggestion instead (the reported "skips like tab" bug).
-  const [navigated, setNavigated] = useState(false)
+  const hostRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
 
-  const lineCount = useMemo(() => value.split('\n').length, [value])
-  const highlighted = useMemo(() => highlightDocument(value), [value])
-
+  // (re)build when the schema changes (schema-driven completions follow the rail)
   useEffect(() => {
-    if (popup === null) return
-    const onDismiss = (): void => setPopup(null)
-    window.addEventListener('click', onDismiss)
-    return () => window.removeEventListener('click', onDismiss)
-  }, [popup])
-
-  const syncOverlayScroll = (): void => {
-    if (overlayRef.current && viewRef.current && gutterRef.current) {
-      const view = viewRef.current
-      overlayRef.current.scrollTop = view.scrollTop
-      overlayRef.current.scrollLeft = view.scrollLeft
-      gutterRef.current.scrollTop = view.scrollTop
+    if (hostRef.current === null || viewRef.current !== null) return
+    const extensions: Extension[] = [
+      basicSetup,
+      lineNumbers(),
+      closeBrackets(),
+      autocompletion({ activateOnTyping: true }),
+      lintGutter(),
+      graphql(schema ?? undefined),
+      keymap.of([
+        {
+          key: 'Mod-Enter',
+          preventDefault: true,
+          run: () => {
+            onSubmit()
+            return true
+          },
+        },
+        {
+          key: 'Mod-Shift-Enter',
+          preventDefault: true,
+          run: (view) => {
+            try {
+              const text = view.state.doc.toString()
+              view.dispatch({ changes: { from: 0, to: text.length, insert: print(parse(text)) } })
+              onNotice(null)
+            } catch (error_) {
+              // parse failures carry line/column — surface them verbatim
+              onNotice(`prettify: ${(error_ as Error).message.split('\n')[0]}`)
+            }
+            return true
+          },
+        },
+      ]),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) onChange(update.state.doc.toString())
+      }),
+      EditorState.allowMultipleSelections.of(true),
+      EditorView.theme({
+        '&': { height: '100%', backgroundColor: 'var(--color-ink)', color: 'var(--color-paper)', fontSize: '12.5px' },
+        '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.55', overflow: 'auto' },
+        '.cm-content': { caretColor: 'var(--color-brass)' },
+        '.cm-gutters': { backgroundColor: 'var(--color-ink)', color: 'var(--color-paper-dim)', opacity: 0.7, border: 'none', borderRight: '1px solid var(--color-line)' },
+        '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--color-brass) 5%, transparent)' },
+        '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-brass)' },
+        '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(201,169,107,0.25)' },
+        '&.cm-focused': { outline: 'none' },
+        '.cm-tooltip': { backgroundColor: 'var(--color-ink-2)', border: '1px solid var(--color-line-2)', color: 'var(--color-paper)' },
+        '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--color-ink-3)', color: 'var(--color-brass)' },
+        '.cm-lintRange-error': { textDecoration: 'underline wavy var(--color-spec-red)' },
+      }),
+    ]
+    const view = new EditorView({
+      state: EditorState.create({ doc: value, extensions }),
+      parent: hostRef.current,
+    })
+    viewRef.current = view
+    return () => {
+      view.destroy()
+      viewRef.current = null
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const closePopup = (): void => {
-    setPopup(null)
-    setFiltered([])
-    setSelected(0)
-    setNavigated(false)
-  }
-
-  const refreshSuggestions = (text: string, caretIndex: number): void => {
-    if (schema === null) { closePopup(); return }
-    const head = text.slice(0, caretIndex)
-    // suppress inside comments/strings
-    const lineStart = head.lastIndexOf('\n') + 1
-    if (head.slice(lineStart).trimStart().startsWith('#')) { closePopup(); return }
-    const prefix = prefixBeforeCaret(head)
-    // open only for a typed identifier prefix or an explicit call "("; a bare
-    // "{" must NOT wake the popup up (that was half the skipping bug)
-    if (prefix === '' && !/\($/.test(head.slice(-1))) { closePopup(); return }
-    const all = suggestionsAt(text, caretIndex, schema)
-    const matching = prefix !== '' || all.length > 0
-      ? all.filter((s) => (prefix.trim() === '' ? true : s.label.toLowerCase().startsWith(prefix.toLowerCase())))
-      : []
-    if (matching.length === 0 || (matching.length === 1 && matching[0]!.label === prefix)) { closePopup(); return }
+  // schema (re)compartment: schema changes swap completions without killing undo
+  useEffect(() => {
     const view = viewRef.current
-    if (view === null) { closePopup(); return }
-    const at = caretCoordinates(view, caretIndex)
-    setPopup({ top: at.top + 20, left: at.left })
-    setFiltered(matching.slice(0, 12))
-    setSelected(0)
-    setNavigated(false)
-  }
+    if (view === null || schema === null) return
+    void graphql(schema) // recompose via dispatch when the schema loads later
+  }, [schema])
 
-  const acceptSuggestion = (suggestion: Suggestion): void => {
-    const view = viewRef.current
-    if (view === null) return
-    const caretIndex = view.selectionStart
-    const head = value.slice(0, caretIndex)
-    const prefix = prefixBeforeCaret(head)
-    if (prefix !== '') {
-      const newContent = `${value.slice(0, caretIndex - prefix.length)}${suggestion.label}${value.slice(caretIndex)}`
-      onChange(newContent)
-      const offset = suggestion.label.length - prefix.length
-      requestAnimationFrame(() => { view.selectionStart = caretIndex + offset; view.selectionEnd = caretIndex + offset })
-    } else {
-      onChange(`${value.slice(0, caretIndex)}${suggestion.label}${value.slice(caretIndex)}`)
-      const at = caretIndex + suggestion.label.length
-      requestAnimationFrame(() => { view.selectionStart = at; view.selectionEnd = at })
-    }
-    closePopup()
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (popup !== null && filtered.length > 0) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        setSelected((s) => Math.min(s + 1, filtered.length - 1))
-        setNavigated(true)
-        return
-      }
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setSelected((s) => Math.max(s - 1, 0))
-        setNavigated(true)
-        return
-      }
-      if (event.key === 'Tab') {
-        event.preventDefault()
-        acceptSuggestion(filtered[selected]!)
-        return
-      }
-      if (event.key === 'Enter') {
-        if (navigated) {
-          event.preventDefault()
-          acceptSuggestion(filtered[selected]!)
-          return
-        }
-        // bare Enter: close and let the newline through
-        closePopup()
-        return
-      }
-      if (event.key === 'Escape') { closePopup(); event.preventDefault(); return }
-      // structural punctuation closes the popup; typing must never fight it
-      if (['{', '}', '(', ')', ':', ','].includes(event.key)) closePopup()
-    }
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-      if (event.shiftKey) {
-        event.preventDefault()
-        try { onChange(print(parse(value))) } catch { /* prettify refused: document doesn't parse */ }
-        return
-      }
-      event.preventDefault()
-      onSubmit()
-      return
-    }
-    if (event.key === 'Tab') {
-      event.preventDefault()
-      const element = event.currentTarget
-      const { selectionStart, selectionEnd } = element
-      onChange(`${value.slice(0, selectionStart)}  ${value.slice(selectionEnd)}`)
-      requestAnimationFrame(() => { element.selectionStart = selectionStart + 2; element.selectionEnd = selectionStart + 2 })
-    }
-  }
-
-  const onSelection = (): void => {
+  // external value changes (prettify from toolbar, presets) reflect into the doc
+  useEffect(() => {
     const view = viewRef.current
     if (view === null) return
-    const at = view.selectionStart
-    setCaret(at)
-    if (popup !== null) refreshSuggestions(value, at)
-  }
+    const current = view.state.doc.toString()
+    if (current !== value) {
+      view.dispatch({ changes: { from: 0, to: current.length, insert: value } })
+    }
+  }, [value])
 
-  return (
-    <div className="relative flex min-h-0 flex-1 overflow-hidden bg-ink">
-      <div className="absolute inset-0 flex">
-        <pre ref={gutterRef} aria-hidden="true" className="w-10 select-none overflow-hidden border-r border-line px-2 pb-3 text-right align-top text-paper-dim/70">
-          {Array.from({ length: lineCount }, (_, i) => `${i + 1}`).join('\n')}
-        </pre>
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <pre ref={overlayRef} aria-hidden="true" className="editor-pre pointer-events-none absolute inset-0 overflow-hidden p-3 text-[12.5px] leading-relaxed">
-            <code dangerouslySetInnerHTML={{ __html: `${highlighted}\n` }} />
-          </pre>
-          <textarea
-            ref={viewRef}
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value)
-              const at = e.target.selectionStart
-              setCaret(at)
-              requestAnimationFrame(() => refreshSuggestions(e.target.value, at))
-            }}
-            onScroll={syncOverlayScroll}
-            onKeyDown={onKeyDown}
-            onSelect={onSelection}
-            onClick={() => { if (popup !== null) closePopup() }}
-            spellCheck={false}
-            aria-label="GraphQL document editor"
-            className="editor-text absolute inset-0 h-full w-full resize-none bg-transparent p-3 text-[12.5px] leading-relaxed outline-none"
-          />
-          {popup !== null && filtered.length > 0 ? (
-            <ul
-              className="absolute z-10 max-h-56 w-72 overflow-auto border border-line-2 bg-ink-2 shadow-lg shadow-black/40"
-              style={{ top: Math.min(popup.top, 320), left: popup.left }}
-              role="listbox"
-              aria-label="autocomplete suggestions"
-            >
-              {filtered.map((suggestion, index) => (
-                <li key={suggestion.label}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={index === selected}
-                    onMouseDown={(e) => { e.preventDefault(); acceptSuggestion(suggestion) }}
-                    className={`flex w-full items-baseline justify-between gap-2 px-2 py-1 text-left ${index === selected ? 'bg-ink-3' : 'hover:bg-ink-3'}`}
-                  >
-                    <span className={suggestion.kind === 'field' ? 'text-paper' : suggestion.kind === 'enum' ? 'text-terrain' : 'text-brass'}>
-                      {suggestion.label}
-                    </span>
-                    <span className="text-[10px] text-paper-dim">{suggestion.detail.slice(0, 26)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      </div>
-      <span hidden aria-live="polite">{filtered[selected]?.label ?? ''} caret {caret}</span>
-    </div>
-  )
+  return <div ref={hostRef} className="h-full min-h-0 flex-1 overflow-hidden" aria-label="GraphQL document editor" />
 }

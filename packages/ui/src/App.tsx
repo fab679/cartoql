@@ -165,8 +165,10 @@ export function App() {
   const prettify = (): void => {
     try {
       setTab({ query: print(parse(activeTab.query)) })
-    } catch {
-      setNotice('prettify refused — the document does not parse')
+      setNotice(null)
+    } catch (error_) {
+      // verbatim graphql parse errors: line/column so users can fix, not guess
+      setNotice(`prettify: ${(error_ as Error).message.split('\n')[0]}`)
     }
   }
 
@@ -275,7 +277,7 @@ export function App() {
               />
             </label>
           </div>
-          <QueryEditor value={activeTab.query} onChange={(query) => setTab({ query })} onSubmit={() => void run()} schema={schema} />
+          <QueryEditor value={activeTab.query} onChange={(query) => setTab({ query })} onSubmit={() => void run()} onNotice={setNotice} schema={schema} />
           <div className="h-40 shrink-0 border-t border-line">
             <div className="flex justify gap-2 border-b border-line/60 px-2 py-1 text-[11px]">
               {(['QUERY VARIABLES', 'HEADERS'] as const).map((name) => (
