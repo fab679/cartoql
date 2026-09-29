@@ -318,6 +318,12 @@ function emitFields(
       // D1: blank objects never materialize as related entities
       patterns.push(`    FILTER(isIRI(?${f.childVar}))`)
       for (const g of gates) patterns.push(`    ${g}`)
+      // docs/07: visibility follows the entity into expansions — nested items
+      // failing their type's stamps leave the store result before assembly
+      // (existence-blind, identical to the reference adapter's itemVisible),
+      // not after: a gate evaluated client-side over assembled rows would
+      // disclose whether the edge held a gated entity at all
+      for (const g of gatesFor(f.node.itemTypeConstraints)) patterns.push(`    ${g}`)
       // D4: typed-fragment children carry the concrete-class condition inside
       // the OPTIONAL — the store resolves conditions (non-matches bind nothing)
       if (f.node.typeCondition !== undefined) {
@@ -338,7 +344,10 @@ function emitFields(
 function projectedFieldsHaveGates(projected: ProjectedRoot): boolean {
   const walk = (fields: readonly ProjectedField[]): boolean =>
     fields.some(
-      (f) => securityConstraints(f.node.constraints).length > 0 || walk(f.children),
+      (f) =>
+        securityConstraints(f.node.constraints).length > 0 ||
+        securityConstraints(f.node.itemTypeConstraints).length > 0 || // nested type gates ref ?cartoql_principal too
+        walk(f.children),
     )
   return walk(projected.fields)
 }
@@ -448,6 +457,9 @@ interface SparqlRowSet {
 
 function rootHasSecurityConstraints(node: AlgebraNode): boolean {
   if (securityConstraints(node.constraints).length > 0) return true
+  const expansion = node as FieldExpansion
+  if (expansion.itemTypeConstraints !== undefined &&
+      securityConstraints(expansion.itemTypeConstraints).length > 0) return true
   return node.children.some(rootHasSecurityConstraints)
 }
 

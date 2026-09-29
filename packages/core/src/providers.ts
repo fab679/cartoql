@@ -28,6 +28,10 @@ export interface JwtGroupsOptions {
   readonly jwksUrl?: string
   readonly principalClaim?: string // default 'sub'
   readonly groupsClaim?: string // default 'groups'
+  /** When set, tokens must carry a matching iss (docs/07 T4: fail-closed claims scoping). */
+  readonly issuer?: string
+  /** When set, tokens must carry a matching aud. */
+  readonly audience?: string
 }
 
 export function jwtGroupsResolver(options: JwtGroupsOptions): PermissionResolver {
@@ -47,13 +51,21 @@ export function jwtGroupsResolver(options: JwtGroupsOptions): PermissionResolver
       if (bearer === undefined || bearer === '') {
         throw new Error('no bearer credential supplied — jwt-groups cannot resolve, fail-closed via resolveView')
       }
-      const { payload } = await jwtVerify(bearer, key)
+      const { payload } = await jwtVerify(bearer, key, {
+        // a token without an expiry is a permanent credential — the kernel's
+        // posture refuses one before it can attest anything (docs/07)
+        requiredClaims: ['exp'],
+        ...(options.issuer !== undefined ? { issuer: options.issuer } : {}),
+        ...(options.audience !== undefined ? { audience: options.audience } : {}),
+      })
       const principalId = payload[principalClaim]
       const groups = payload[groupsClaim]
       if (typeof principalId !== 'string' || !Array.isArray(groups) || groups.some((g) => typeof g !== 'string')) {
         throw new Error(`token claims malformed (need string ${principalClaim} and string[] ${groupsClaim}) — fail-closed`)
       }
       return {
+        // attested identity: the gateway binds this principal (header aliases refuse)
+        principalId,
         groups: new Set(groups),
         // deterministic cache-buster: same claims → same version; any claim
         // change invalidates plan/cursor caches (docs/10)
@@ -107,6 +119,8 @@ export function oidcIntrospectResolver(options: OidcIntrospectOptions): Permissi
         throw new Error('introspection response malformed — fail-closed')
       }
       return {
+        // attested identity from the introspection response: the gateway binds it
+        principalId,
         groups: new Set(groups as string[]),
         viewVersion: `oidc-${String(verdict['iat'] ?? 0)}`,
       }

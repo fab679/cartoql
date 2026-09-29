@@ -56,6 +56,14 @@ export interface PermissionView {
   readonly roles?: ReadonlySet<string>
   readonly viewVersion: string
   readonly allowAll?: boolean
+  /**
+   * The identity the claims source attests (Path-2 resolvers: jwt-groups and
+   * oidc-introspect read it from the credential, never from the request
+   * context). Present ⇒ the transport binding is this attested identity: a
+   * request header naming a different principal refuses pre-execution
+   * (docs/07 — an alias is an impersonation channel, T4).
+   */
+  readonly principalId?: string
 }
 
 /** The interpretation of a resolver failure: deny everything, versioned as such. */

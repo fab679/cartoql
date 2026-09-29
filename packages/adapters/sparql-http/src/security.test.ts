@@ -111,4 +111,45 @@ describe('constraint pushdown: projection gates (docs/03, kernel v1)', () => {
       }),
     ).toThrow(ExecutorError)
   })
+
+  it('docs/07: visibility follows the entity — nested type stamps gate items INSIDE the field OPTIONAL', () => {
+    // org-notes.graphql: Organization.noteOfInverse carries BOTH the traversal
+    // stamp (hr-comp, field-level) and the SensitiveNote type stamp (legal,
+    // item-level itemTypeConstraints). A probe principal holding the traversal
+    // group but not legal must gate the ITEMS in the store: the legal gate
+    // joins inside the notes OPTIONAL, before assembly could count gated rows.
+    const source = readFileSync(join(shard, 'documents/org-notes.graphql'), 'utf-8')
+    const plan = compileDocument(source, module_)
+    const root = plan.roots.find((r) => r.kind === 'EntityLookup')
+    if (!root || root.kind !== 'EntityLookup') throw new Error('bad root')
+    const request = projectRoot(root, 0, {}, 'values', {
+      security: context('bob', ['hr-comp']), // holds the edge, NOT the item's legal group
+      aclGraph: 'urn:cartoql:shard:sec-acl',
+    })
+    const notesOptionalAt = request.query.indexOf('OPTIONAL { ?v0_e ^<https://cartoql.example/corpus/sec#noteOf> ?v0_e_1 .')
+    const traversalGateAt = request.query.indexOf(groupIri('hr-comp'), notesOptionalAt)
+    const itemGateAt = request.query.indexOf(groupIri('legal'))
+    expect(notesOptionalAt).toBeGreaterThan(-1)
+    expect(traversalGateAt).toBeGreaterThan(notesOptionalAt)
+    // the item's OWN gate rides too — this is the leak the parity matrix can't
+    // see by default (env-gated), asserted at the projection text level here
+    expect(itemGateAt).toBeGreaterThan(-1)
+    expect(itemGateAt).toBeGreaterThan(notesOptionalAt) // inside the field OPTIONAL, store-side
+  })
+
+  it('docs/07: a plan carrying ONLY nested type-level stamps is stamped — refusals still fire', async () => {
+    // strip the field-level traversal constraint but keep itemTypeConstraints
+    // (the nested SensitiveNote 'legal' gate) — the adapter must still see a
+    // stamped plan: a gate monkey-patched out of one node is not an open module
+    const source = readFileSync(join(shard, 'documents/org-notes.graphql'), 'utf-8')
+    const plan = compileDocument(source, module_)
+    const stripped: typeof plan = JSON.parse(
+      JSON.stringify(plan, (key, value: string[]) => {
+        if (key === 'constraints') return value.filter((c) => c === 'explicit-graph')
+        return value
+      }),
+    )
+    const adapter = new SparqlHttpAdapter({ endpoint: 'http://localhost:9/sparql' })
+    await expect(adapter.run(stripped, module_, {})).rejects.toThrow(/open posture makes stamps meaningless/)
+  })
 })

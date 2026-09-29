@@ -55,6 +55,15 @@ joined at that granularity. It is *not* a role-assignment mechanism; a field can
    affected fields degrade).
 6. **Directly client-supplied registry directives** on any document/fragment →
    `CQL_DIRECTIVE_REJECTED` for the whole document.
+7. **Identity binds to the attested principal.** Resolvers that derive identity
+   from credentials (`jwt-groups`, `oidc-introspect`) return the *attested*
+   principal in their view; the transport header may agree or stay absent — it
+   never names a different principal. A mismatch refuses pre-execution
+   (`CQL_PERMISSION_DENIED`, no store round trip), and the bound identity
+   threads to store-side enforcement (the principal IRIs the ACL joins
+   consult). Header-keyed resolvers (`static`, `open`) are unaffected: the
+   header **is** the credential there. This is the alias-closure of docs/07 T4:
+   an agent with a valid token cannot rename itself per header.
 
 ### Parking lot (proposed, not in v1 — needs design review)
 

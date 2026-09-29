@@ -21,6 +21,7 @@ async function signedToken(claims: Record<string, unknown>): Promise<string> {
   return await new SignJWT(claims)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
+    .setExpirationTime('1h') // the resolver refuses non-expiring tokens (docs/07)
     .sign(secretKey)
 }
 
