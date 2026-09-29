@@ -67,9 +67,12 @@ export async function runQuery(
   variables: Record<string, unknown>,
   principal?: string,
   bearer?: string,
+  /** 'json-ld' negotiates Accept: application/ld+json (gateway response representation, docs/04). */
+  output: 'json' | 'json-ld' = 'json',
 ): Promise<RunResult> {
   const started = performance.now()
   const headers: Record<string, string> = { 'content-type': 'application/json' }
+  if (output === 'json-ld') headers['accept'] = 'application/ld+json'
   if (principal) headers['x-cartoql-principal'] = principal
   if (bearer) headers.authorization = `Bearer ${bearer}`
   const response = await request(endpoint, '/graphql', {

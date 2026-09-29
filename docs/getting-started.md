@@ -111,6 +111,35 @@ npm run serve -- \
 
 CartoQL auto-probes the store for `SPARQL Protocol variable binding` support — if the store ignores it, CartoQL falls back to a `VALUES` transport (both work everywhere). See [the query examples](examples.md) for running live against Fuseki and Oxigraph.
 
+### Concepts: what a "module" is, and how named graphs work
+
+Everything the gateway serves comes from **one module** — a bundle fixed at boot:
+
+| Ingredient | Flag | Role |
+|---|---|---|
+| ontology + SHACL shapes | `--ontology … --shapes …` | generates the SDL/GraphQL schema (no mapping file) |
+| dataset graph scope | `--graph <IRI>` | **the named graph(s) CartoQL reads** — the address in your RDF dataset |
+| ACL graph scope | `--acl-graph <IRI>` | the named graph holding permission membership facts (stamped modules) |
+| stamps | `--stamps …` | which fields/types get `@requireGroup`/`@requireRole` directives |
+| claims | `--auth-file …` / `--jwt-secret …` | how a request identity resolves into permission groups |
+
+**Named graphs (D10)** are the discipline CartoQL keeps with your RDF dataset:
+
+- Change your `--graph` and you've pointed CartoQL at a *different dataset* —
+  same shapes, different data, but the module scope changes with it.
+- Every compiled query pattern is wrapped `GRAPH <the-scope> { … }`; nothing is
+  ever read from the default graph by accident. If you didn't name a graph, the
+  query doesn't see it.
+- Permission facts don't live in your data graph. Gate joins read the **ACL
+  graph** — keep your entity facts in the data graph, your membership triples in
+  the ACL graph, and neither can see through the other.
+- Pagination cursors embed the graph scope's hash: cursors minted in one scope
+  are dead on arrival in another.
+
+In practice: `LOAD` or bulk-load your app data into `urn:my:app:data`, put
+membership facts in `urn:my:app:acl`, then serve with
+`--graph urn:my:app:data --acl-graph urn:my:app:acl --stamps …`.
+
 ## A list of every CLI flag
 
 From the gateway itself:

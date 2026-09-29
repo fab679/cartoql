@@ -23,7 +23,16 @@ import { startGateway } from './serve.js'
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`)
-  return i !== -1 ? process.argv[i + 1] : undefined
+  if (i === -1) return undefined
+  const value = process.argv[i + 1]
+  // a value-less flag must be a usage error, not a swallowed argument — a
+  // wrapped/lost token used to cascade into "no store configured" far from the
+  // real mistake
+  if (value === undefined || value.startsWith('--')) {
+    console.error(`error: --${name} needs a value on the same line (was ${value === undefined ? 'missing' : `'${value}'`})`)
+    process.exit(2)
+  }
+  return value
 }
 
 const ontologyFile = flag('ontology')
@@ -58,7 +67,11 @@ const gateway = startGateway({
 
 gateway.server.listen(port, () => {
   console.log(`cartoql gateway listening on ${gateway.url}`)
-  console.log(`  playground: ${gateway.url}/playground`)
+  if (flag('ui')) {
+    console.log(`  console:    ${gateway.url}/`)
+  } else {
+    console.log('  console:    build it and serve it — npm --prefix packages/ui run build, then --ui packages/ui/dist')
+  }
   console.log(`  graphql:    POST ${gateway.url}/graphql`)
   console.log(`  health:     ${gateway.url}/health`)
 })

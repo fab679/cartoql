@@ -85,6 +85,7 @@ The `graph` button opens a dialog with a force-laid-out graph of the types:
 | "gateway answered 500" | The gateway's own /sdl output is broken, or the schema changed mid-request — check that the /health endpoint works and there's no stale token/endpoint in the console's URL bar |
 | "cannot reach http://localhost:…" | No gateway is listening at that port — check the CLI output, note the port it prints; serve on a specific `--port` to make it non-ephemeral |
 | Endpoint field blank = localhost:<port> | same-origin serving — that is correct when the console is loaded by the same `--ui` |
+| `ld` toggle in the RESPONSE toolbar | negotiates `Accept: application/ld+json` — the next run returns expanded JSON-LD (predicate IRIs, `@id`; [docs/04](04-integration.md)). Turn it off to flip back to shaped GraphQL JSON |
 | Black graph是一只 but no type nodes / schema rail empty | The gateway's `/sdl` didn't parse — check the gateway's console / CLI output for `sdl validation errors` — datasets in a named graph can do this when the data graph is missing or the store is down |
 | Autocomplete shows "no contextual type Found" | the schema is still loading — hit ctrl+enter on a {} query and see it change; reload the page once; if the gateway has just been started and /sdl has not been served yet, just re-load the active document |
 

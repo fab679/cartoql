@@ -43,6 +43,7 @@ const STORAGE = {
   activeTab: 'cartoql.active.tab',
   panelResponse: 'cartoql.panel.response',
   panelRail: 'cartoql.panel.rail',
+  outputLd: 'cartoql.output.ld',
 } as const
 
 function loadTabs(): QueryTab[] {
@@ -97,6 +98,10 @@ export function App() {
   const [responseOpen, setResponseOpen] = useState(() => localStorage.getItem('cartoql.panel.response') !== 'closed')
   const [responseWidth, setResponseWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.response.w') ?? 40))
   const [railWidth, setRailWidth] = useState(() => Number(localStorage.getItem('cartoql.panel.rail.w') ?? 16))
+  // response representation (docs/04): default shaped GraphQL JSON; LD negotiates
+  // `accept: application/ld+json` per run — it flips whole payloads, so it lives
+  // as a panel state, not a per-tab toggle
+  const [ldOutput, setLdOutput] = useState(() => localStorage.getItem(STORAGE.outputLd) === 'true')
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]!
 
@@ -124,7 +129,8 @@ export function App() {
     localStorage.setItem('cartoql.panel.rail.w', String(railWidth))
     localStorage.setItem('cartoql.panel.response', responseOpen ? 'open' : 'closed')
     localStorage.setItem('cartoql.panel.rail', railOpen ? 'open' : 'closed')
-  }, [endpoint, principal, bearer, tabs, activeTab, responseWidth, railWidth, responseOpen, railOpen])
+    localStorage.setItem(STORAGE.outputLd, ldOutput ? 'true' : 'false')
+  }, [endpoint, principal, bearer, tabs, activeTab, responseWidth, railWidth, responseOpen, railOpen, ldOutput])
 
   useEffect(() => {
     const timer = setTimeout(() => void loadHealth(endpoint), 300)
@@ -172,6 +178,7 @@ export function App() {
         variables,
         principal === '' ? undefined : principal,
         bearer === '' ? undefined : bearer,
+        ldOutput ? 'json-ld' : 'json',
       )
       const body = result.body as { errors?: readonly GraphQLErrorEntry[] } | unknown
       const console = body !== null && typeof body === 'object' ? (body as { errors?: readonly GraphQLErrorEntry[] }).errors ?? [] : []
@@ -185,7 +192,7 @@ export function App() {
     } finally {
       setRunning(false)
     }
-  }, [endpoint, principal, bearer, activeTab])
+  }, [endpoint, principal, bearer, activeTab, ldOutput])
 
   const prettify = (): void => {
     try {
@@ -345,6 +352,17 @@ export function App() {
             >
           <div className="flex flex-wrap items-center gap-2 border-b border-line px-2 py-1">
             <span className="text-[11px] tracking-wider text-paper-dim">RESPONSE</span>
+            {/* response representation (docs/04): shaped GraphQL JSON — or expanded
+                JSON-LD, same plan, same enforcement; predicate IRIs + @id */}
+            <button
+              type="button"
+              onClick={() => setLdOutput((v) => !v)}
+              title="response representation — JSON-LD (predicate IRIs + @id) vs shaped JSON, docs/04"
+              aria-pressed={ldOutput}
+              className={`cursor-pointer border px-1.5 py-0.5 tracking-wider ${ldOutput ? 'border-brass/50 text-brass' : 'border-line-2 text-paper-dim hover:border-brass/50 hover:text-brass'}`}
+            >
+              ld
+            </button>
             {response !== null ? (
               <>
                 <Stamp label="status" value={String(status)} tone={status === 200 ? 'terrain' : 'red'} />

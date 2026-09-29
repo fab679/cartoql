@@ -18,7 +18,15 @@ Prepare the SHACL shapes and the ontology, and graphQL types generate from it �
 | `owl:TransitiveProperty` | surface, adapted to a planner later |
 | `owl:inverseOf` (with includeInverses flag) | the reverse edge **auto-generates** from the ontology alone — one ontology line, both edges |
 
-### Person / Organization / Publication, each class 只 有 your types and vocabulary — auto-generated lakhs are backend builtins named a co are one of: adds iri identity field, Connection/Edge connection wrapper, and the algebra/planner knows the store shape for it.
+### The generated surface, per class
+
+Every class your shapes target becomes a type wearing **your** vocabulary, plus a
+small set of standard residents CartoQL adds as builtins: the `iri` identity field
+("identity is data"), the `Connection`/`Edge` wrappers on listing roots with cursor
+pagination, ordering enums and equality-filter arguments generated per SHACL
+scalar leaf, and interface types inherited from the ontology. The compiler and the
+adapters know each field's store shape from the same generation pass — there is no
+second truth about what a field means.
 
 ## Documents
 
@@ -30,6 +38,35 @@ Prepare the SHACL shapes and the ontology, and graphQL types generate from it �
 | Equality filters | `organizations(name: "Acme…", first: 5)` — filters generate per SHACL scalar leaf |
 | Fragments, inline fragments | spreads that match the parent type |
 | Typed fragments on interface fields | `… on Person { worksFor { iri } }` |
+
+## Named graphs: how CartoQL addresses your data (D10)
+
+RDF datasets can hold triples in a default graph plus **named graphs**. CartoQL
+picks the eager, unambiguous half of that story:
+
+- **Every pattern is explicitly scoped to a graph.** The compiler stamps each
+  algebra node with the module's *dataset graph set* and adds an `explicit-graph`
+  infra constraint; the adapters emit `GRAPH <scope> { … }` around every pattern —
+  the reference adapter refuses to run a plan whose scope hash doesn't match its
+  own. There is no hidden default-graph access: if you didn't name a graph, the
+  query doesn't see it.
+- **One `--graph` flag at boot, not per query.** `--graph urn:my:dataset:graph`
+  (or `datasetGraphs` in `cartoql.json`) names the scope the entire module reads.
+  That scope is part of the module's identity: the same shapes pointed at a
+  different graph are a different dataset, and the generated SDL reflects it.
+- **Without `--graph`**, the SPARQL adapter falls back to the fixed scope
+  `urn:cartoql:dataset:default` — a bounded default, not a wildcard.
+- **Cursors are graph-scoped.** Pagination cursors embed a hash of the graph
+  scope; a cursor minted against one scope can never be replayed against another.
+- **Permissions are their own graph.** A stamped module declares `--acl-graph` —
+  the (typically private) graph holding membership facts the store-side gates
+  join against. Data plane and control plane are separate graphs serving the
+  same store: the data graph holds only entity facts; principal-membership
+  triples live in the ACL graph and never become queryable entity data.
+
+Practical shape for an application: load your data into a named graph
+(`LOAD`, `INSERT`, or your store's bulk loader), point the gateway at that graph,
+and keep the ACL graph for permission facts your provisioning logic writes.
 | Aliases ( "_typename on any entity") | `p: people …` -- response under exactly this `p` |
 | `__typename` | `on the same entity: __typename` |
 | Language-tagged literals | `"…@en` → returns the lexical string value of the first / only literal |

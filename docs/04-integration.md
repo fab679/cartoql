@@ -13,7 +13,7 @@ $ npx cartoql-gateway serve \
     --sparql https://your-store.example/sparql \
     --shapes https://your-site.example/shapes.ttl \
     --ontology https://your-site.example/ontology.ttl
-# → http://localhost:4000/graphql (playground served at /playground)
+# → http://localhost:4000/graphql (console at / with --ui packages/ui/dist)
 ```
 
 What you get:
@@ -24,8 +24,11 @@ What you get:
   the generator skipped them because no security stamping config was provided)
 - `@maxDepth`, `@budget`, `@redactWith` are *available* but not stamped; operators
   can pass `--lint-budget-limit N` to hard-cap any document
-- Multi-module: pass additional `--shapes-file … --ontology-file …` bundles; modules
-  compose with type-name prefixes (you declare them in SDL generation configs)
+- Multi-module composition: *spec'd, not live* — one `--ontology`/`--shapes` pair
+  per gateway boot today. Composing several bundles under one SDL (type-name
+  prefixes in `cartoql.json` `modules[]`) is a roadmap item (docs/05). Until then,
+  run **one gateway per module** (sidecar-per-module, router in front — see
+  "Serving ontologies you don't know ahead of time" below)
 - Service federation via SPARQL `SERVICE` — config-driven endpoints (`--federated-query`
   list) allowed only when the target endpoint is declared in `cartoql.json` (no
   wildcard fan-out)
@@ -34,6 +37,87 @@ What you don't get in this mode (by design, not limitation): multi-principal
 permissions, provenance payload fields, principal-sliced introspection. The tenant /
 `@graphSet` mechanics require an embedder (Path 3) since they need graph naming and
 policy sources.
+
+---
+
+## Response representations — JSON-LD (v0, live)
+
+`POST /graphql` negotiates output by `Accept`: the default is the shaped GraphQL
+JSON; `Accept: application/ld+json` serializes the **same response tree into
+expanded-form JSON-LD** — plan-guided, so every entity's keys become the real
+SHACL-path predicate IRIs with no mapping file.
+
+```json
+// query { publication(iri: …) { iri name year } } →
+{"@context": {"data": "urn:cartoql:wire:data", "publication": "urn:cartoql:root:publication",
+  "message": "urn:cartoql:wire:message", "…": "…"},
+ "data": {"publication": {"@id": "https://cartoql.example/corpus/core/data#pub-a3",
+   "https://cartoql.example/corpus/core#name": [{"@value": "Plan-level authorization"}],
+   "https://cartoql.example/corpus/core#year": [{"@value": "2025"}]}},
+ "errors": []}
+```
+
+Encoding contract (normative-ish — the serializer IS the doc):
+
+- **Expanded form, not compacted.** GraphQL field names collide across types
+  (`Person.name` / `Organization.name` can name different predicates), so one flat
+  `@context` cannot be faithful; type-scoped compact contexts are a roadmap item.
+- **Identity is data**: `@id` comes from the computed `iri` field — request it.
+  Entities without it serialize as blank-node resources.
+- **Inverses emit under `@reverse`** with the path IRI (JSON-LD 1.1).
+- **Nulls are omitted** (JSON-LD has no null). The two-track contract still holds:
+  `errors[]` carries `CQL_PERMISSION_DENIED` for visible denials — the
+  announcement channel is unchanged; existence-blind fields are absent, exactly
+  as absence is.
+- **Wire keys stay JSON-native** and map fixed URN terms in `@context`
+  (`data`, `errors`, `edges`, `cursor`, `pageInfo` → `urn:cartoql:wire:*`;
+  root fields → `urn:cartoql:root:<rootField>`): every key is context-mapped, so
+  the document is strictly valid JSON-LD, and RDF-ifying it yields the real
+  data triples plus drop-identifiable `urn:cartoql:` wrapper quads.
+- **Security is upstream of serialization.** The LD writer sees only what the
+  plan's enforcement already withheld — same compiled plan, same two-track
+  semantics, same `errors[]`.
+
+---
+
+## Serving ontologies you don't know ahead of time (dynamic modules)
+
+CartoQL's schema is a **build artifact** of an ontology + shapes pair, fixed at
+boot ("generated, never mapped" — docs/01). For an application where the schema
+*arrives*, make discovery an explicit orchestration layer. What runs today, and
+what the roadmap adds:
+
+**In the box now (v0):**
+
+- Your app owns discovery: watch/scan ontology+shapes pairs wherever they arrive
+  (a directory, an object store, an IdP-driven repo), and **boot one gateway per
+  discovered module**. Boot is deterministic and fast (generation is pure; the
+  plan cache is per-process), so restart-on-change is a viable contract while
+  pre-alpha: new ontology file → `restart(serve(ontology, shapes))`.
+- Regeneration is versioned: file checksums drive the SDL's version hash
+  (`schemaHash`, visible on `/health`) — republishing an ontology produces a new
+  schema version, and clients can pin what they integrated against.
+- Discovered modules arrive **unstamped** unless you pair them with a stamps
+  config: the honest open posture (health says `auth: open`), or pair
+  discovery→stamps in your orchestrator for every module before it serves.
+
+**Roadmap (not live — the flags referenced below don't exist yet):**
+one gateway over a composed `modules[]` set, per-principal schema slicing,
+hot-reload without process restart. Until then, the honest unit is *gateway per
+module* plus a thin router in front:
+
+```text
+app ──► router (by module/tenant) ──► gateway:graphA --ontology a.ttl
+                                  ──► gateway:graphB --ontology b.ttl
+```
+
+**Many named graphs:** the same one-scope-per-gateway rule applies verbatim to
+graphs. A gateway reads one explicit graph scope (D10); the IR's graph list and
+store-level multi-graph projections are roadmap. Practical cuts today: one
+gateway per graph (`--graph` per instance, `--acl-graph` shared or per-tenant),
+or land everything the module should address into a single graph and serve that.
+Don't put tenant facts into overlapping graphs on one gateway — the module scope
+is a dataset identity, not a filter.
 
 ---
 

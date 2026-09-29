@@ -48,6 +48,8 @@ CartoQL's three commitments:
   `@tenantScoped`, `@redactWith`, `@minConfidence`, `@provenance`, `@maxDepth`,
   `@budget` — all generator-stamped, never client-satisfiable
 - SPARQL 1.1 execution with federated `SERVICE` support; pluggable store adapters
+- JSON-LD response representation (`Accept: application/ld+json`) — plan-guided,
+  expanded form; no mapping file
 - Principal-scoped schema slicing (serve each consumer only the modules it uses)
 - Apollo-federation-ready entity keying (`@key` on IRIs) with auth-forwarding
   requirements spec'd
@@ -59,11 +61,18 @@ CartoQL's three commitments:
 Pre-alpha, first implementation slices live. The golden path is green end to end:
 SHACL shapes → generated SDL → compiled plans (ADR-1 IR) → executed responses,
 all snapshot-tested against the reviewed [corpus](corpus/TRACEABILITY.md) —
-**51 tests, 7 packages**. The gateway now serves GraphQL over your own data:
+**169 tests across 18 suites, 9 packages**. The gateway now serves GraphQL over your own data:
 
 ```bash
-npm run serve --   --ontology corpus/shards/core/ontology.ttl   --shapes   corpus/shards/core/shapes.ttl   --data     corpus/shards/core/data.ttl   --port     4137
-# → http://localhost:4137/playground
+npm --prefix packages/ui run build          # the rich console (CodeMirror 6 editing, schema graph)
+
+npm run serve -- \
+  --ontology corpus/shards/core/ontology.ttl \
+  --shapes   corpus/shards/core/shapes.ttl \
+  --data     corpus/shards/core/data.ttl \
+  --ui       packages/ui/dist \
+  --port     4137
+# → console at http://localhost:4137/
 
 curl -s -X POST localhost:4137/graphql -H 'content-type: application/json' -d '{
   "query": "query Q($iri: ID!) { publication(iri: $iri) { name year authoredInverse { name } } }",

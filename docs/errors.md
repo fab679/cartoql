@@ -58,4 +58,4 @@ Schema itself doesn't participate; /health and /metrics/the stdlib generate a se
 | `/metrics` | 200 Prometheus | request durations, compile durations, plan_cache hits/misses, adapter query timers |
 | `/sdl` | 200 text/turtle | the compiled schema SDL text |
 | `/explain` | 200 JSON | planId, cost, depth, nodeCount, budgets, withinBudget: bool |
-| `/playground` | 200 HTML | the previous generation playground (simple single-prompt UI) |
+| `/` | 200 HTML | the console SPA — **requires `--ui packages/ui/dist`**; absent flag → 404 with the build hint |

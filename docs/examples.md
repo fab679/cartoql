@@ -523,3 +523,94 @@ On SPARQL mode, CartoQL projects every plan to a `SELECT` injecting ACL joins fo
 | `COPY CURL` | copy the shell command that makes this request |
 
 Every query here works by pasting directly into the document editor.
+
+## 13. Building an application on CartoQL
+
+The whole contract in one place — load, serve, consume:
+
+### a. Put your data where the module reads it (named graphs)
+
+CartoQL serves **one module** over an **explicit graph scope** (D10 — no default-graph
+accidents). Put entity facts in a data graph and permission facts in a separate
+ACL graph, in the same store:
+
+```sparql
+# getting data in (Oxigraph / Fuseki / any SPARQL 1.1 Update endpoint):
+LOAD <file:///path/to/app-data.ttl> INTO GRAPH <urn:my:app:data>
+# membership facts (written by your provisioning, not by CartoQL):
+#   <urn:urn…principal:alice> <urn:cartoql:acl:memberOf> <urn:cartoql:acl:group:legal> IN <urn:my:app:acl>
+```
+
+### b. Boot the gateway pinned to that scope
+
+```bash
+npm run serve -- \
+  --ontology my-onto.ttl    --shapes my-shapes.ttl \
+  --sparql  http://localhost:7878/query \
+  --graph   urn:my:app:data \
+  --acl-graph urn:my:app:acl \
+  --stamps  my-stamps.json --auth-file my-claims.json \
+  --ui      packages/ui/dist --port 4137
+```
+
+Same shapes + a different `--graph` = a different dataset; cursors minted under
+one scope are refused in another.
+
+### c. Talk to it from your app (TypeScript)
+
+```ts
+const GATEWAY = 'http://gateway:4137/graphql'
+
+export async function ask<T>(query: string, variables: Record<string, unknown> = {}, principal?: {
+  principalId?: string; bearer?: string
+}): Promise<T> {
+  const res = await fetch(GATEWAY, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...(principal?.principalId ? { 'x-cartoql-principal': principal.principalId } : {}),
+      ...(principal?.bearer ? { authorization: `Bearer ${principal.bearer}` } : {}),
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+  if (res.status === 403) throw new Error('CQL_PERMISSION_DENIED: identity bind refused')
+  const body = (await res.json()) as {
+    data?: T
+    errors?: Array<{ extensions?: { code?: string } }>
+  }
+  for (const e of body.errors ?? []) {
+    if (e.extensions?.code === 'CQL_QUERY_TOO_COMPLEX') throw new Error(e.extensions.code) // /explain and retry smaller
+  }
+  return body.data as T
+}
+
+// page-through pattern — cursors are graph-scoped and ordering-pinned
+interface PersonPage {
+  people: {
+    edges: Array<{ cursor: string; node: { iri: string; name: string } }>
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
+  }
+}
+let after: string | undefined
+do {
+  const { people } = await ask<PersonPage>(
+    `query ($after: ID) { people(first: 100, after: $after) { edges { cursor node { iri name } } pageInfo { hasNextPage endCursor } } }`,
+    { after },
+  )
+  people.edges.forEach((e) => console.log(e.node.iri, e.node.name))
+  after = people.pageInfo.hasNextPage ? people.pageInfo.endCursor ?? undefined : undefined
+} while (after !== undefined)
+```
+
+### d. What each part of the contract is for
+
+| App concern | The CartoQL answer |
+|---|---|
+| which data | `--graph` named-graph scope (nothing else is readable — D10) |
+| who is asking | `x-cartoql-principal` header (header-keyed resolvers) or a bearer JWT (attested identity; a header alias of another name = 403, docs/03 rule 7) |
+| what it may see | stamps → `@requireGroup`/`@requireRole` compile into the plan ACL joins; `CQL_*` codes on `errors[]` (branch on codes, never messages) |
+| JSON-LD consumers | `Accept: application/ld+json` → expanded-form response, plan-guided predicate IRIs (docs/04) |
+| budgeting | `POST /explain` previews cost/depth before execution; `CQL_QUERY_TOO_COMPLEX` is the typed rejection |
+| introspection | `/sdl` for the generated schema sheet (pin it against your shapes' checksum) |
+| **writes** | **none from the gateway, by design** — writes go through your store's SPARQL Update with your store's write ACL (docs/01: no write surface in v1) |
+| health/posture | `/health` — adapter, auth provider, schemaHash, aclGraph (operators never discover posture by accident) |

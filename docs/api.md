@@ -65,6 +65,9 @@ The compiled schema as SDL text. The console uses this to populate the schema ra
 
 Prometheus exposition. Toggle with `--metrics off` or the `observability` section of `cartoql.json`.
 
-## GET /playground
+## GET / (the console)
 
-A lightweight single-prompt interface ( no editor ) served at `/playground`.
+The rich console — a [GraphiQL-class](https://github.com/graphql/graphiql) editor UI
+built from `packages/ui` and served statically at `/`. Served **only** when the
+gateway is given `--ui packages/ui/dist`; without it, GETs fall through to `404`
+with the build instruction. (The legacy inline `GET /playground` stub was retired.)
