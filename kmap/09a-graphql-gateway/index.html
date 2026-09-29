@@ -1,0 +1,2519 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GraphQL over RDF, compiled with a plan-level security kernel — typed, versioned, security-compiled query plans over any SPARQL 1.1 store">
+      
+      
+      
+        <link rel="canonical" href="https://fab679.github.io/cartoql/kmap/09a-graphql-gateway/">
+      
+      
+        <link rel="prev" href="../09-api-plane/">
+      
+      
+        <link rel="next" href="../10-roadmap/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>09a — GraphQL Gateway - CartoQL</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=IBM+Plex+Sans:300,300i,400,400i,700,700i%7CIBM+Plex+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"IBM Plex Sans";--md-code-font:"IBM Plex Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#09a--graphql-gateway-kmaps-own-graphql-over-rdf" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="CartoQL" class="md-header__button md-logo" aria-label="CartoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CartoQL
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              09a — GraphQL Gateway
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/fab679/cartoql" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fab679/cartoql
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../features/" class="md-tabs__link">
+          
+  
+  
+  What CartoQL Does
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  KMap Platform
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md" class="md-tabs__link">
+          
+  
+  
+  Community
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="CartoQL" class="md-nav__button md-logo" aria-label="CartoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    CartoQL
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/fab679/cartoql" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    fab679/cartoql
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart (5 minutes)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Console (GraphiQL-like UI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What CartoQL Does
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    What CartoQL Does
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ontology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ontology as the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphQL Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Compiler & Query Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-testing-conformance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Test Corpus (specs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-performance-engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KMap Platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    KMap Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KMap (summary)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-product-vision/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 — Product Vision
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-client-journey/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 — Client Journey
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-architecture-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 — Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-ontology-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 — Ontology Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-ingestion-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 — Ingestion Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-semantic-infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 — Semantic Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-security-tenancy-privacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 — Security, Tenancy & Privacy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08-retrieval-and-agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 — Retrieval & Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09-api-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 — API Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09a — GraphQL Gateway
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09a — GraphQL Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#positioning-across-the-api-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning across the API plane
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lifecycle-generation-not-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle: generation, not mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-directive-registry-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The directive registry (v1)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The directive registry (v1)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#schema-shaping-directives-generator-stamped-per-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema-shaping directives (generator-stamped, per-field)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-usable-directives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client-usable directives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-three-enforcement-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three enforcement rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-codes-contract-branch-on-these-never-on-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error codes (contract, branch on these, never on messages)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roles--access-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles &amp; access levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namespaces--composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespaces &amp; composition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#federation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Federation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning--deprecation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning &amp; deprecation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-testing-for-this-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security testing for this layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#build-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-for-gateway-v1-tracked-deliberately-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope for gateway v1 (tracked, deliberately deferred)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 — Delivery Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Community
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/fab679/cartoql/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/fab679/cartoql/blob/main/SECURITY.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/fab679/cartoql/blob/main/CODE_OF_CONDUCT.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code of Conduct
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#positioning-across-the-api-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning across the API plane
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lifecycle-generation-not-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle: generation, not mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-directive-registry-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The directive registry (v1)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The directive registry (v1)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#schema-shaping-directives-generator-stamped-per-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema-shaping directives (generator-stamped, per-field)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-usable-directives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client-usable directives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-three-enforcement-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three enforcement rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-codes-contract-branch-on-these-never-on-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error codes (contract, branch on these, never on messages)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roles--access-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles &amp; access levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namespaces--composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespaces &amp; composition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#federation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Federation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning--deprecation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning &amp; deprecation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-testing-for-this-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security testing for this layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#build-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-for-gateway-v1-tracked-deliberately-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope for gateway v1 (tracked, deliberately deferred)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="09a--graphql-gateway-kmaps-own-graphql-over-rdf">09a — GraphQL Gateway (KMap's own GraphQL-over-RDF)<a class="headerlink" href="#09a--graphql-gateway-kmaps-own-graphql-over-rdf" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Extraction note (2026-09):</strong> the gateway's <em>mechanics</em> are being extracted into a
+standalone open-source project (<strong>Verax</strong>, Apache-2.0 — repo sibling to this one:
+<code>../cartoql/</code>). Verax owns the generator, compiler, directive registry, and the four
+SPIs ([PermissionResolver / StoreAdapter / DocumentSourceResolver / ProvenanceModel]);
+KMap becomes its first <strong>platform embedder</strong> (Verax integration guide (<code>../04-integration.md#path-3--platform-embedder-the-kmap-case</code>)),
+implementing the SPIs against its own permission kernel, stores, and provenance model.
+<strong>This document remains KMap's integration spec</strong> — which directives get stamped,
+which policies drive them, versioning windows, and KMap-specific invariants
+(e.g., the cross-tenant prohibition). Where the two differ, Verax's spec is the
+generic contract and this doc is the deployment. Error codes map: Verax <code>VX_*</code> →
+KMap plans surface them namespaced as <code>KM_*</code> with KMap extensions.</p>
+</blockquote>
+<p>KMap ships its <strong>own GraphQL-over-RDF gateway</strong>: a schema generator, a compiler, and a
+directive registry that together turn the tenant's active ontology into a typed,
+versioned, <strong>security-compiling</strong> API surface. We own it because the two things that
+matter most to us — permission parity (<a href="../07-security-tenancy-privacy/#the-permission-model">07</a>)
+and ontology-versioned contracts (<a href="../04-ontology-strategy/">04</a>) — have no off-the-shelf
+equivalent; bolting them onto a third-party translator (GraphQL-LD, HyperGraphQL,
+vendor endpoints) means fighting their pipeline at every security-critical seam.</p>
+<p>Sizing: roughly 2–3 months of one senior pair to v1 (see <a href="#build-plan">build plan</a>).
+Strategic note recorded in <a href="../10-roadmap/">10</a>: a candidate for open-sourcing as an
+independent component post-v1 — generally useful to the RDF community, exposes none
+of our client ontology work, and pulls mindshare to the layer where our moat lives
+(the security compilation step).</p>
+<h2 id="positioning-across-the-api-plane">Positioning across the API plane<a class="headerlink" href="#positioning-across-the-api-plane" title="Permanent link">&para;</a></h2>
+<p>The gateway is one of four read surfaces sharing <strong>one permission-aware query planner</strong>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>agent tools (08) ──┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>REST /v1 (09)    ──┼──►  permission-aware planner  ──►  graph store / vector index / BM25
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>MCP server (09)  ──┤          (single security kernel)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>GraphQL gateway ──┘   ◄── this document
+</span></code></pre></div>
+<p>Rule of planes: <strong>the compiled output is the thing that runs.</strong> Per-field resolver
+functions with their own ad-hoc query logic are forbidden; every GraphQL field
+resolves through compiled, ACL-joined query plans produced by this gateway and executed
+by the planner. One kernel, four transports.</p>
+<h2 id="lifecycle-generation-not-mapping">Lifecycle: generation, not mapping<a class="headerlink" href="#lifecycle-generation-not-mapping" title="Permanent link">&para;</a></h2>
+<p>No hand-written GraphQL schemas, no hand-maintained JSON-LD context files — those are
+the rotting artifacts that motivated owning this layer. The SDL is a <strong>build artifact
+of ontology publication</strong>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ontology draft → review gate → TBox v(n) published   (04)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>        └─ SHACL shapes published
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>             └─ SDL schema REGENERATED from shapes      (this doc)
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                  ├─ types from node shapes (minCount/maxCount → nullability/lists)
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                  ├─ directives STAMPED by the generator from ACL metadata
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                  ├─ deprecated fields for renamed/removed terms (migration notes)
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>                  └─ SDL version registered, change event emitted via webhooks (09)
+</span></code></pre></div>
+<p>Consequences worth stating once, explicitly:</p>
+<ul>
+<li>The GraphQL contract is <strong>exactly as current and as reviewed as the ontology</strong> —
+  same provenance chain, same human gates, same version numbers.</li>
+<li>Additive ontology changes → additive SDL fields (non-breaking). Breaking changes
+  ride the ontology review gate and the API overlap policy (12-month support, <a href="../09-api-plane/#cross-cutting-api-standards">09</a>).</li>
+<li>Regeneration is mechanical; if the generated artifact diverges from the TBox, that is
+  a build failure, not a support ticket.</li>
+</ul>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>                    ┌──────────────────────────────────────────────┐
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a> active TBox v(n) ─►│ SDL GENERATOR                                │
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a> + SHACL shapes     │  shapes → types; SHACL counts → nullability;  │
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>                    │  property ranges → field types; ACL stamps → │
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                    │  directives; renamed terms → @deprecated      │
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                    └───────────────────┬──────────────────────────┘
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                                        │ versioned SDL set
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                                        ▼
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a> client ── GraphQL query ──► GATEWAY
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                    ┌──────────────────────────────────────────────┐
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                    │ 1 parse + document validation                 │
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                    │ 2 DIRECTIVE EXPANSION (registry, below)       │
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                    │ 3 effective-permission resolution (user ctx) │
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                    │ 4 algebra: ACL joins injected into EVERY field │
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                    │ 5 plan cost check (@budget/@maxDepth; reject  │
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                    │   &gt; threshold with typed error)               │
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                    │ 6 execute via the permission-aware planner     │
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                    │ 7 shape JSON-LD → GraphQL response;           │
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                    │   errors carry stable codes, never messages   │
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>                    └──────────────────────────────────────────────┘
+</span></code></pre></div>
+<h2 id="the-directive-registry-v1">The directive registry (v1)<a class="headerlink" href="#the-directive-registry-v1" title="Permanent link">&para;</a></h2>
+<p>Directives are <strong>stamped by the generator</strong> onto the SDL from governance metadata.
+They are <em>enforcement points, never grants</em> (see <a href="#the-three-enforcement-rules">rules</a>).</p>
+<h3 id="schema-shaping-directives-generator-stamped-per-field">Schema-shaping directives (generator-stamped, per-field)<a class="headerlink" href="#schema-shaping-directives-generator-stamped-per-field" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Directive</th>
+<th>SDL</th>
+<th>Meaning in the compiled plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@tenantScoped</code></td>
+<td><code>on OBJECT \| FIELD_DEFINITION</code></td>
+<td>binds every algebra node in the document to the caller's tenant graphs (<code>&lt;tenant&gt;/abox/…</code> only); no cross-tenant IRIs resolve at all</td>
+</tr>
+<tr>
+<td><code>@scope(level)</code></td>
+<td><code>on FIELD_DEFINITION</code>, <code>level ∈ {CLASS, FIELD, EDGE, SCHEMA}</code></td>
+<td>joins the principal's effective permissions at the declared granularity; CLASS = entity visibility, FIELD = property-level (row-level security analog), EDGE = relationship-level</td>
+</tr>
+<tr>
+<td><code>@traversalScope(on)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>hop-level ACL: an edge expands only if <em>the edge itself</em> is visible — entities reachable only through hidden edges stay hidden (<a href="../07-security-tenancy-privacy/#the-permission-model">07</a> rule 3, compiled)</td>
+</tr>
+<tr>
+<td><code>@hiddenUnless(scope)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>field renders (non-null) only within the scope; outside it, resolves to <code>null</code> + an error-code <strong>only</strong> when the field was explicitly selected-and-denied (see <a href="#the-three-enforcement-rules">fail-closed</a>)</td>
+</tr>
+<tr>
+<td><code>@requireGroup(group)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td><strong>business-role gate</strong>: concrete client group (e.g., <code>hr-comp</code> for compensation facts); groups are synced from the client IdP/source ACLs (<a href="../07-security-tenancy-privacy/#identity">07</a>) — consumed, never authored by us</td>
+</tr>
+<tr>
+<td><code>@requireRole(role)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td><strong>platform-role gate</strong> (<code>tenant-admin</code>, <code>reviewer</code>, <code>member</code>, <code>api-app</code>, <code>auditor</code>): console/admin semantics only. Platform roles can never grant business visibility (admin ≠ reader)</td>
+</tr>
+<tr>
+<td><code>@minConfidence(v)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>facts below the extraction-confidence threshold render as review-pending placeholders, not as asserted values (<a href="../06-semantic-infrastructure/#what-every-published-triple-carries">06</a>)</td>
+</tr>
+<tr>
+<td><code>@redactWith(strategy)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>partial-visibility strategies (aggregate-count only, date-rounded, nullify-with-count) for fields where full reveal fails the ACL join but aggregate visibility passes</td>
+</tr>
+<tr>
+<td><code>@provenance</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>output struct includes <code>prov:wasGeneratedBy</code> (run IRI) and <code>kmap:sourceAt</code> grounding for the selected fact(s) — payload form guarantees citation-ability for any client (<a href="../08-retrieval-and-agents/#citations--highlights">08</a>)</td>
+</tr>
+<tr>
+<td><code>@maxDepth(n)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>nesting cap on this field's subtree, checked post-parse before execution</td>
+</tr>
+<tr>
+<td><code>@budget(cost)</code></td>
+<td><code>on FIELD_DEFINITION</code></td>
+<td>per-field complexity weight; the request gets a compiled <strong>plan-cost budget</strong> and is rejected with a typed error if exceeded</td>
+</tr>
+</tbody>
+</table>
+<h3 id="client-usable-directives">Client-usable directives<a class="headerlink" href="#client-usable-directives" title="Permanent link">&para;</a></h3>
+<p>Clients may use <strong>only</strong> the GraphQL spec directives (<code>@include</code>, <code>@skip</code>) and any
+future KMap <em>ergonomic</em> directives that carry zero security semantics (e.g., a future
+<code>@totalCount</code> on list fields — explicitly computed over the visible set only).
+Security-set directives <strong>may not be sent meaningfully in documents</strong>: any client-supplied
+instance of a registry directive on a query/fragment is <strong>rejected with a typed error</strong>,
+not ignored — silently ignoring them invites "why is my @scope not working" tickets
+and worse, false confidence.</p>
+<h2 id="the-three-enforcement-rules">The three enforcement rules<a class="headerlink" href="#the-three-enforcement-rules" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Directives are enforcement points, not grants.</strong> All security directives are
+   stamped by the generator from ontology ACL metadata at publish time; clients cannot
+   add, remove, or satisfy them from the query side. The compile step only ever <em>adds</em>
+   constraints to the algebra — there is no code path that relaxes one. Policy is
+   declared by governance artifacts (<a href="../04-ontology-strategy/">04</a>, <a href="../07-security-tenancy-privacy/">07</a>),
+   never requested by the caller.</li>
+<li><strong>Everything compiles through the single permission-aware planner.</strong> Compiled
+   SPARQL algebra with ACL joins in the plan is the only execution route (the same
+   kernel REST/agents/MCP use). No side resolvers, no BFF shortcuts, no "just this
+   once" read paths — a per-field exception would be the hole the audit finds next quarter.</li>
+<li><strong>Fail closed, visibly:</strong> unknown directive, unresolvable scope, ACL version older
+   than SLA, planner error → the affected field resolves to <code>null</code> <strong>plus a stable
+   error code</strong> in <code>errors[]</code> when the field was explicitly selected by the caller.
+   Silently omitting deny-by-failure is forbidden (indistinguishable from non-existence
+   is <em>correct</em> for filtering, but never for degraded-ACL failure); the codes are
+   contract (below).</li>
+</ol>
+<h2 id="error-codes-contract-branch-on-these-never-on-messages">Error codes (contract, branch on these, never on messages)<a class="headerlink" href="#error-codes-contract-branch-on-these-never-on-messages" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+<th>Client action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KM_PERMISSION_DENIED</code></td>
+<td>field/edge selected, visible-class check failed</td>
+<td>none expected; UI hides gracefully</td>
+</tr>
+<tr>
+<td><code>KM_PERMISSION_STALE</code></td>
+<td>ACL sync older than SLA for the deciding source</td>
+<td>retry after sync; surface "partial stale data" posture</td>
+</tr>
+<tr>
+<td><code>KM_SCOPE_UNRESOLVED</code></td>
+<td>principal/scope resolution failed</td>
+<td>reauth; contact admin if persistent</td>
+</tr>
+<tr>
+<td><code>KM_QUERY_TOO_COMPLEX</code></td>
+<td>plan cost over budget / depth over cap</td>
+<td>narrow the selection or paginate</td>
+</tr>
+<tr>
+<td><code>KM_DIRECTIVE_REJECTED</code></td>
+<td>client supplied a registry directive</td>
+<td>remove it; it's server-side</td>
+</tr>
+<tr>
+<td><code>KM_ONTOLOGY_STALE</code></td>
+<td>schema version no longer served (beyond overlap window)</td>
+<td>migrate; changelog link in the error extensions</td>
+</tr>
+<tr>
+<td><code>KM_PARTIAL_STALE_SOURCE</code></td>
+<td>answer depends on a source beyond its freshness SLA</td>
+<td>flag the data age in UI</td>
+</tr>
+</tbody>
+</table>
+<p>Every error carries <code>extensions.tenant</code>, <code>extensions.schemaVersion</code>, and where useful
+<code>extensions.source</code>/<code>extensions.ontologyDiff</code> pointers — clients can <em>prove</em> what
+they saw, same posture as agent citations.</p>
+<h2 id="roles--access-levels">Roles &amp; access levels<a class="headerlink" href="#roles--access-levels" title="Permanent link">&para;</a></h2>
+<p>Roles enter the compile through <strong>one channel</strong>: effective-permission resolution
+(<a href="../07-security-tenancy-privacy/#the-permission-model">07</a> step 1) — directives are
+inputs to that resolution, never a parallel security mechanism.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Platform roles (KMap-owned, fixed set)</th>
+<th>Business roles (client-owned)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Examples</td>
+<td><code>tenant-admin</code>, <code>reviewer</code>, <code>member</code>, <code>api-app</code>, <code>auditor</code></td>
+<td>"sales-manager", "hr-comp", "legal"</td>
+</tr>
+<tr>
+<td>Source</td>
+<td>product definition</td>
+<td>client IdP groups + source ACL roles, synced (SCIM/ACL extraction)</td>
+</tr>
+<tr>
+<td>Governs</td>
+<td>console powers: review queues, budgets, audit access, source registry</td>
+<td>fact visibility: entities, fields, hops</td>
+</tr>
+<tr>
+<td>Directive</td>
+<td><code>@requireRole</code></td>
+<td><code>@requireGroup</code></td>
+</tr>
+</tbody>
+</table>
+<p>Invariants:
+1. Business roles are <strong>consumed, never authored</strong> by the platform — the client IdP is
+   source of truth; a group rename there syncs through, no mapping file to maintain
+   (same anti-rot principle as the SDL generator).
+2. Platform roles never grant business visibility — <code>tenant-admin</code> outside <code>hr-comp</code>
+   gets <code>null</code> + <code>KM_PERMISSION_DENIED</code> on compensation fields, same as anyone
+   (<a href="../07-security-tenancy-privacy/#the-permission-model">07</a> rule 5).
+3. Role hierarchies (manager ⊒ member) are the client's structure — synced as group
+   relations, resolved per request, cache-versioned by ACL version. <strong>No role rule is
+   ever evaluated at compile time</strong> where it could go stale.
+4. Agents inherit the acting user's business roles; their platform role is fixed
+   (<code>member</code>-class) — an agent never holds <code>reviewer</code> or <code>tenant-admin</code>.</p>
+<h2 id="namespaces--composition">Namespaces &amp; composition<a class="headerlink" href="#namespaces--composition" title="Permanent link">&para;</a></h2>
+<p>GraphQL has no native namespace construct; KMap gets namespaces through composition,
+which mirrors the ontology's modularity (<a href="../04-ontology-strategy/#two-layer-strategy-fixed-core-per-client-domain-extensions">04</a>):</p>
+<ul>
+<li><strong>SDL sets are composed from modules</strong>: <code>core module (product-owned) + one module
+  per client domain extension</code>, each versioned exactly like its TBox counterpart
+  (core version, domain version — independently). Type names are prefixed per
+  module (<code>FreightcoShipment</code>); the boring collision answer is standard practice and
+  harmless since clients consume via SDKs/persisted queries.</li>
+<li><strong>The semantic namespace never disappears</strong>: every field maps to a full IRI;
+  introspection and deprecation messages carry it, so the RDF namespace survives even
+  where GraphQL display names flatten.</li>
+<li><strong>Principal-scoped virtual namespaces</strong>: composed schema sets are sliced per
+  consumer — an app registered (via persisted queries) against only the freight
+  domain is served exactly <code>core + freightco</code> modules. Enforced by introspection
+  scoping (below), not cosmetic naming. A(slice) ≠ B(slice) is a <em>feature</em>: it makes
+  blast radius of an ontology change analyzable per consumer.</li>
+</ul>
+<h2 id="federation">Federation<a class="headerlink" href="#federation" title="Permanent link">&para;</a></h2>
+<p>The word means two different things here; both have a place, with one hard rule.</p>
+<p><strong>SPARQL federation (RDF-native) — supported from v1.</strong> The <code>SERVICE</code> clause lets
+compiled plans join across graph sets <em>within a tenant</em> (e.g., current ABox vs.
+archived partitions; the control store vs. the TBox registry). This is a query-planner
+feature (<a href="../06-semantic-infrastructure/#core-query-surfaces">06</a>), not a new API surface.</p>
+<p><strong>GraphQL federation (subgraphs) — Mode A (v2 candidate): KMap as a subgraph in the
+client's supergraph.</strong> Their gateway composes their internal APIs with us.</p>
+<ul>
+<li>Keying is natural because federation joins entities by globally-unique key and our
+  entity IRIs already are that: <code>@key(fields: "iri")</code> maps 1:1.</li>
+<li>Security conditions (all mandatory, none optional):</li>
+<li><strong>Auth forwarding</strong>: federation representative requests carry no user context by
+     default; the composing gateway must forward the acting identity on every
+     representative, or the subgraph answers fail-closed (<code>KM_PERMISSION_DENIED</code>).</li>
+<li><strong>Join probing hides, never errors</strong>: a foreign gateway probing by key receives
+     indistinguishable nulls for invisible entities — joins are explicitly <em>exempt</em>
+     from the "explicitly-selected denial" error semantics (<a href="#the-three-enforcement-rules">rules</a>
+     rule 3): hidden entities hide; they don't announce themselves in <code>errors[]</code>.</li>
+<li>Plan-cost budgets (<code>@budget</code>, <code>@maxDepth</code>) apply per representative request.</li>
+<li>Version coupling: the client's supergraph pins one of our schema versions for
+     its lifetime; overlap policy (<a href="../09-api-plane/#cross-cutting-api-standards">09</a>)
+     governs migrations.</li>
+</ul>
+<p><strong>Mode B (permitted): composing multiple KMap graph sets within one tenant.</strong></p>
+<p><strong>Hard rule / architectural invariant: no document, composition, or plan ever spans
+two tenants' graphs.</strong> The gateway composes by <code>{tenant, partition}</code>; no code path
+expresses a cross-tenant document. Recorded here explicitly because this is exactly
+the kind of constraint a future enterprise feature request ("just this one joint
+query across our subsidiaries' tenants") will pressure an engineer to soften — the
+answer is separate tenants with client-approved ontology sharing, or nothing.</p>
+<h2 id="versioning--deprecation">Versioning &amp; deprecation<a class="headerlink" href="#versioning--deprecation" title="Permanent link">&para;</a></h2>
+<ul>
+<li>SDL sets are versioned identically to the TBox that generated them (<code>schema v(n) ← ontology v(n)</code>).</li>
+<li>Deprecations are generated: renamed domain property → old field marked <code>@deprecated</code>
+  (with migration note = ontology changelog entry), served through the full 12-month
+  overlap window (<a href="../09-api-plane/#cross-cutting-api-standards">09</a>) then removed with
+  <code>KM_ONTOLOGY_STALE</code>.</li>
+<li>Introspection is <strong>principal-class scoped</strong>: client apps see their served schema;
+  admin/monitoring principals see deprecation and directive metadata; anonymous
+  introspection is off. No schema detail is exposed that a principal couldn't query anyway.</li>
+</ul>
+<h2 id="security-testing-for-this-layer">Security testing for this layer<a class="headerlink" href="#security-testing-for-this-layer" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The tenant permission test suite (<a href="../07-security-tenancy-privacy/#verification">07</a>)
+  gains a <strong>GraphQL arm</strong>: every must/must-not-see fixture runs as a GraphQL document
+  and as a REST call (same fixtures, two transports — drift between surfaces is a bug).</li>
+<li>Directive registry changes require: negative probes (attempted client-supplied
+  directives, denied), replay of all prior compiler versions on captured query sets
+  (compile-output must not silently change semantics), and a review by whoever owns
+  the security kernel.</li>
+<li>Fuzzing: malformed/algebra-warping documents (deep nesting, duplicate field names in
+  different fragments, alias storms) against the cost checker.</li>
+</ul>
+<h2 id="operational-notes">Operational notes<a class="headerlink" href="#operational-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Persisted queries supported from v1</strong> (client registers a document hash; production
+  execution only accepts registered IDs): DoS surface reduction, plan-cache friendly,
+  and clean audit story ("tenant X ran registered query Q-17 for user Y").</li>
+<li>Query logging: document shape (not raw arg values for sensitive fields), plan cost,
+  execution time, permission version used — feeds the tenant audit log (<a href="../07-security-tenancy-privacy/#audit--monitoring">07</a>).</li>
+<li>Plan cache: keyed <code>(schemaVersion, documentShape, effectiveACLVersion)</code> — cache hits
+  never span ACL versions, so an access change invalidates instantly and correctly.</li>
+</ul>
+<h2 id="build-plan">Build plan<a class="headerlink" href="#build-plan" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Scope</th>
+<th>Est.</th>
+<th>owner pairing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G1</td>
+<td>SHACL → SDL generator + deprecation scaffolding + CI contract tests</td>
+<td>2–3 w</td>
+<td>graph engineer + full-stack</td>
+</tr>
+<tr>
+<td>C1</td>
+<td>Parser/validator → algebra with injected ACL joins; run through planner</td>
+<td>4–6 w</td>
+<td>graph engineer + agent/infra engineer (security-critical work)</td>
+</tr>
+<tr>
+<td>D1</td>
+<td>Directive registry v1 (table above) + expansion pass + error codes</td>
+<td>1–2 w</td>
+<td>with C1</td>
+</tr>
+<tr>
+<td>V1</td>
+<td>Versioning machinery, introspection scoping, persisted queries</td>
+<td>1–2 w</td>
+<td>infra</td>
+</tr>
+<tr>
+<td>H1</td>
+<td>Complexity fuzz, permission GraphQL-arm fixtures, negative probes</td>
+<td>continuous from C1</td>
+<td>security ritual (<a href="../07-security-tenancy-privacy/">07</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>Sequencing note: G1 can start as soon as core-ontology SHACL shapes exist (Phase 0,
+<a href="../10-roadmap/#phase-0--foundations-weeks-04-overlaps-with-pilot-prep">10</a>); the gateway
+first serves clients in <strong>Phase 2</strong> — the pilot (Phase 1) needs agents + REST only, so
+the gateway build happens alongside production hardening without blocking the design
+partner.</p>
+<h2 id="out-of-scope-for-gateway-v1-tracked-deliberately-deferred">Out of scope for gateway v1 (tracked, deliberately deferred)<a class="headerlink" href="#out-of-scope-for-gateway-v1-tracked-deliberately-deferred" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Subscriptions / live views (webhooks already cover change events, <a href="../09-api-plane/#webhook-events-v1-schema">09</a>).</li>
+<li>GraphQL federation <strong>Mode A</strong> (KMap-as-subgraph): conditions spec'd above; build only
+  when a design partner's supergraph use case justifies it. SPARQL federation is <em>not</em>
+  deferred — it's a planner capability from v1.</li>
+<li>Client-defined custom directives (would require a full policy-review pipeline to be safe).</li>
+<li>Mutation surface (the graph is ingestion-writable only, by platform invariant,
+  <a href="../06-semantic-infrastructure/#what-this-layer-refuses-to-be">06</a>) — requests for
+  write-shaped GraphQL features route to the client-journey review-gate pattern instead.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy", "content.code.annotate", "search.highlight", "search.share"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
