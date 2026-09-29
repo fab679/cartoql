@@ -1,10 +1,13 @@
 {
   "name": "cartoql",
-  "version": "0.1.1",
-  "description": "GraphQL over RDF, compiled with a plan-level security kernel \u2014 typed, versioned, security-compiled query plans over any SPARQL 1.1 store",
+  "version": "0.2.0",
+  "description": "GraphQL over RDF, compiled with a plan-level security kernel — typed, versioned, security-compiled query plans over any SPARQL 1.1 store",
   "type": "module",
   "license": "Apache-2.0",
-  "repository": "https://github.com/fab679/cartoql",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fab679/cartoql.git"
+  },
   "homepage": "https://github.com/fab679/cartoql",
   "engines": {
     "node": ">=20"

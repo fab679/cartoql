@@ -1,6 +1,6 @@
 {
   "name": "cartoql-monorepo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "GraphQL over RDF, compiled with a plan-level security kernel \u2014 typed, versioned, security-compiled query plans over any SPARQL 1.1 store",
   "type": "module",
   "engines": {
