@@ -78,7 +78,7 @@ describe('gateway: serve (docs/04 Path 1 quickstart)', () => {
     }
   })
 
-  it('serves health and the playground', async () => {
+  it('serves health; the legacy stub playground is retired — /playground points to the real console', async () => {
     const g = boot()
     try {
       const health = await fetch(`${g.url}/health`)
@@ -87,9 +87,13 @@ describe('gateway: serve (docs/04 Path 1 quickstart)', () => {
       expect(healthBody['status']).toBe('ok')
       expect(String(healthBody['adapter'])).toContain('reference')
 
+      // the rich console (packages/ui) replaced it; without --ui the 404 guides
+      // to the build — the stub HTML must be gone everywhere
       const playground = await fetch(`${g.url}/playground`)
-      expect(playground.status).toBe(200)
-      expect((await playground.text()).toLowerCase()).toContain('playground')
+      expect(playground.status).toBe(404)
+      const body = (await playground.json()) as { errors: Array<{ message?: string }> }
+      expect(body.errors[0]?.message).toContain('packages/ui')
+      expect(String(body.errors[0]?.message)).not.toContain('playground HTML')
     } finally {
       await g.close()
     }

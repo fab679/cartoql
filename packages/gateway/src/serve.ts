@@ -10,7 +10,9 @@
  *
  * Endpoints:
  *  - POST /graphql      { query, variables } → compile+execute, { data, errors }
- *  - GET  /playground   minimal HTML console (no build step, no CDN deps)
+ *                       (Accept: application/ld+json → expanded JSON-LD, docs/04)
+ *  - GET  /             the console SPA, with --ui packages/ui/dist (rich UI;
+ *                       the legacy inline stub playground is retired)
  *  - GET  /health       operator posture: adapter, schema hash, SDL version
  *
  * v0 errors carry `extensions.name` (CompilerError/ExecutorError); the typed
@@ -35,6 +37,7 @@ import { BudgetError, enforceBudgets, DEFAULT_BUDGETS, type BudgetLimits } from 
 import type { Plan } from '../../core/src/ir.js'
 import { loadConfig, type CartoQLConfig } from '../../core/src/config.js'
 import { planDepth, planNodeCount } from '../../core/src/ir.js'
+import { toJsonLd } from '../../core/src/jsonld.js'
 import { Metrics, logLine, type MetricFamily } from '../../core/src/metrics.js'
 import { ReferenceAdapter } from '../../adapters/reference/src/index.js'
 import { SparqlHttpAdapter } from '../../adapters/sparql-http/src/index.js'
@@ -303,10 +306,6 @@ export function startGateway(options: ServeOptions): RunningGateway {
           provenance: 'off (M3)',
         })
       }
-      // with --ui the SPA owns '/', the playground stays at /playground
-      if (req.method === 'GET' && (req.url === '/playground' || (options.uiDir === undefined && req.url === '/'))) {
-        return send(200, playgroundHtml(), 'text/html; charset=utf-8')
-      }
       if (req.method === 'POST' && req.url === '/graphql') {
         const requestId = crypto.randomUUID()
         const requestTimer = metrics.timer('requests', { surface: 'graphql' })
@@ -363,14 +362,48 @@ export function startGateway(options: ServeOptions): RunningGateway {
           : undefined
         const bearer = authz?.startsWith('Bearer ') ? authz.slice('Bearer '.length) : undefined
         const view = await resolveView(resolver, { principalId, credentials: { bearer } })
-        const response = await run(plan, variables, { view, principalId })
+        // Identity binding (docs/07 T4): a claims-backed view attests exactly one
+        // principal. The header may agree or stay out of the way — never name a
+        // different one, and there is no fail-open fallback for a mismatch.
+        const bound =
+          view.principalId === undefined
+            ? principalId // header-keyed resolver (static/open): the header IS the credential
+            : principalId === 'anonymous'
+              ? view.principalId // credential says who; the header is redundant
+              : view.principalId === principalId
+                ? principalId // header agrees with the token: consistent alias
+                : null // mismatch: someone attached an alias to a token — refuse
+        if (bound === null) {
+          finish(403) // denial is a served outcome: logs + metrics record it, not silence
+          return send(403, {
+            errors: [{
+              message: 'credential attests a different principal than the request header — refusal precedes any store round trip',
+              extensions: { code: 'CQL_PERMISSION_DENIED' },
+            }],
+          })
+        }
+        const response = await run(plan, variables, { view, principalId: bound })
         finish(200)
+        // JSON-LD output (docs/04): same compiled plan, same two-track
+        // enforcement — serialization is downstream of the kernel, so the
+        // writer never sees data the plan withheld. Negotiated by Accept;
+        // errors[] rides unchanged (visible denial keeps its code).
+        if (String(req.headers['accept'] ?? '').includes('application/ld+json')) {
+          return send(200, toJsonLd(plan, response), 'application/ld+json')
+        }
         return send(200, response)
       }
       if (options.uiDir !== undefined && req.method === 'GET' && req.url !== undefined) {
         return serveStatic(req.url, options.uiDir, send)
       }
-      return send(404, { errors: [{ message: 'not found; try POST /graphql, GET /sdl, GET /health, GET /playground' }] })
+      // no --ui: the rich console is a build artifact (packages/ui), never inline
+      // HTML — the old stub playground is retired; this is the pointer to it
+      return send(404, {
+        errors: [{
+          message:
+            'not found; try POST /graphql, GET /sdl, GET /health. Console: `npm --prefix packages/ui run build` and pass --ui packages/ui/dist (docs/console.md)',
+        }],
+      })
     } catch (err) {
       if (err instanceof CompilerError || err instanceof ExecutorError) {
         return send(400, { errors: [{ message: err.message, extensions: { name: err.name } }] })
@@ -427,27 +460,6 @@ function normalizeVariables(raw: unknown): Record<string, string | number | bool
   return out
 }
 
-function playgroundHtml(): string {
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>cartoql playground</title>
-<style>body{font-family:ui-monospace,monospace;max-width:820px;margin:2rem auto;padding:0 1rem}
-textarea{width:100%;height:11rem}pre{background:#111;color:#eee;padding:1rem;overflow:auto}</style>
-</head><body><h1>cartoql playground</h1>
-<p>POST a GraphQL query with variables (scalars only) to <code>/graphql</code>.</p>
-<p><label>variables (JSON):</label><br><input id="vars" size="60" value='{"iri": "…"}' /></p>
-<p><textarea id="q"></textarea></p>
-<p><button onclick="go()">run</button></p>
-<pre id="out">—</pre>
-<script>
-async function go(){
-  const out = document.getElementById('out')
-  try {
-    const variables = JSON.parse(document.getElementById('vars').value || '{}')
-    const r = await fetch('/graphql', {method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({query: document.getElementById('q').value, variables})})
-    out.textContent = JSON.stringify(await r.json(), null, 2)
-  } catch(e){ out.textContent = String(e) }
-}
-</script></body></html>
-`
-}
+// (the v0 inline playgroundHtml was retired: the rich console — packages/ui,
+// CodeMirror 6 editing, schema graph, budget gauge, denial rails — is the only
+// query surface; build it and serve it with --ui)
